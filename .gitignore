@@ -27,3 +27,6 @@ dist-ssr
 # Convex
 convex/_generated/
 .env.local
+
+DS_Store
+.structure.txt
