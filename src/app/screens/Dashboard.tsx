@@ -2,10 +2,14 @@ import { Activity, ArrowRight, Clock, Globe, Map, Target, TrendingUp } from 'luc
 import { Link } from 'react-router-dom';
 import { MetricCard } from '../components/MetricCard';
 import { ReportCard } from '../components/ReportCard';
-import { mockCampaigns, mockReports } from '../data/mockData';
+import { mockCampaigns} from '../data/mockData';
+
+import { useQuery } from "convex/react";
+import { api } from "../../../convex/_generated/api";
 
 export function Dashboard() {
-  const priority = mockReports.filter((r) => r.severity === 'CRITICAL' || r.severity === 'HIGH').slice(0, 3);
+  const reports = useQuery(api.reports.get);
+  const priority = reports?.filter((r) => r.severity === 'CRITICAL' || r.severity === 'HIGH').slice(0, 3) ?? [];
 
   return (
     <div>
@@ -26,7 +30,7 @@ export function Dashboard() {
           </div>
           <div className="space-y-4">
             {priority.map((r) => (
-              <ReportCard key={r.id} report={r} showVotes={false} monospace />
+              <ReportCard key={String(r._id)} report={{ ...r, id: String(r._id) }} showVotes={false} monospace />
             ))}
           </div>
         </div>
