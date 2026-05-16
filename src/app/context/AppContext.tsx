@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import type { UserRole } from '../types';
-import { useConvexAuth, useQuery } from 'convex/react';
+import { useQuery } from 'convex/react';
 import { api } from '../../../convex/_generated/api';
 
 type DemoType = 'analyst' | 'admin' | null;
@@ -20,23 +20,20 @@ interface AppContextValue {
 const AppContext = createContext<AppContextValue | null>(null);
 
 export function AppProvider({ children }: { children: ReactNode }) {
-  const { isAuthenticated, isLoading: isAuthLoading } = useConvexAuth();
-  const user = useQuery(api.users.me) ?? null;
+  const viewer = useQuery(api.users.viewerRole);
+  const isAuthLoading = viewer === undefined;
+  const user = viewer?.user ?? null;
+
   const [role, setRole] = useState<UserRole>('public');
   const [demoMode, setDemoMode] = useState(false);
   const [demoType, setDemoType] = useState<DemoType>(null);
 
   useEffect(() => {
-    if (!isAuthLoading && isAuthenticated && user) {
-      // In a real app, you'd get the role from the user object in Convex
-      // For now, we'll default to 'analyst' for authenticated users unless in demo mode
-      if (!demoMode) {
-        setRole((user as any).role || 'analyst');
-      }
-    } else if (!isAuthLoading && !isAuthenticated && !demoMode) {
-      setRole('public');
+    if (!isAuthLoading && !demoMode) {
+      // viewer.role can be null when unauthenticated — default to 'public'
+      setRole((viewer?.role as UserRole) ?? 'public');
     }
-  }, [isAuthenticated, isAuthLoading, user, demoMode]);
+  }, [isAuthLoading, viewer, demoMode]);
 
   const enterAnalystDemo = () => {
     setDemoMode(true);
@@ -53,21 +50,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const exitDemo = () => {
     setDemoMode(false);
     setDemoType(null);
-    setRole('public');
+    // Restore the real role from Convex (or fall back to 'public')
+    setRole((viewer?.role as UserRole) ?? 'public');
   };
 
   return (
     <AppContext.Provider
-      value={{ 
-        role, 
-        demoMode, 
-        demoType, 
+      value={{
+        role,
+        demoMode,
+        demoType,
         user,
         isLoading: isAuthLoading,
-        enterAnalystDemo, 
-        enterAdminDemo, 
-        exitDemo, 
-        setRole 
+        enterAnalystDemo,
+        enterAdminDemo,
+        exitDemo,
+        setRole
       }}
     >
       {children}
