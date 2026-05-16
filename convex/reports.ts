@@ -1,5 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { requireRole } from "./lib/session";
 import {
   platformValidator,
   reportStatusValidator,
@@ -107,16 +108,55 @@ export const create = mutation({
   },
 });
 
+export const getMyVote = query({
+  args: {
+    reportId: v.id("reports"),
+    voterId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query("reportVotes")
+      .withIndex("by_report_and_voter", (q) =>
+        q.eq("reportId", args.reportId).eq("voterId", args.voterId),
+      )
+      .unique();
+    return existing?.voteType ?? null;
+  },
+});
+
 export const vote = mutation({
   args: {
     reportId: v.id("reports"),
+    voterId: v.string(),
     voteType: voteTypeValidator,
   },
   handler: async (ctx, args) => {
+    if (!args.voterId.trim()) {
+      throw new Error("Invalid voter id");
+    }
+
+    const existing = await ctx.db
+      .query("reportVotes")
+      .withIndex("by_report_and_voter", (q) =>
+        q.eq("reportId", args.reportId).eq("voterId", args.voterId),
+      )
+      .unique();
+
+    if (existing) {
+      throw new Error("You have already voted on this report");
+    }
+
     const report = await ctx.db.get("reports", args.reportId);
     if (!report) {
       throw new Error("Report not found");
     }
+
+    await ctx.db.insert("reportVotes", {
+      reportId: args.reportId,
+      voterId: args.voterId,
+      voteType: args.voteType,
+      createdAt: new Date().toISOString(),
+    });
 
     const patch =
       args.voteType === "scam"
@@ -136,8 +176,10 @@ export const updateStatus = mutation({
   args: {
     reportId: v.id("reports"),
     status: reportStatusValidator,
+    sessionToken: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    await requireRole(ctx, args.sessionToken, ["admin"]);
     const report = await ctx.db.get("reports", args.reportId);
     if (!report) {
       throw new Error("Report not found");
