@@ -1,0 +1,74 @@
+@import 'tailwindcss';
+@import './styles/theme.css';
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    @apply scroll-smooth antialiased;
+  }
+
+  body {
+    @apply min-h-screen bg-background font-sans text-text;
+  }
+}
+
+@layer utilities {
+  .card {
+    @apply rounded-xl border border-border bg-surface shadow-sm;
+  }
+
+  .glass {
+    @apply rounded-xl border border-border bg-surface shadow-sm;
+  }
+
+  .btn-gradient {
+    @apply bg-gradient-to-r from-primary to-accent text-on-primary shadow-sm transition hover:opacity-95;
+  }
+
+  .btn-primary {
+    @apply rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-on-primary shadow-sm transition hover:bg-primary-dim;
+  }
+
+  .btn-accent {
+    @apply rounded-lg bg-accent px-4 py-2.5 text-sm font-semibold text-on-primary shadow-sm transition hover:bg-accent-dim;
+  }
+
+  .btn-outline {
+    @apply rounded-lg border border-border bg-surface px-4 py-2.5 text-sm font-medium text-text transition hover:bg-gray-50;
+  }
+
+  .nav-pill-active {
+    @apply rounded-full bg-primary/10 text-primary;
+  }
+
+  .section-label {
+    @apply text-xs font-semibold uppercase tracking-wider text-text-muted;
+  }
+
+  .glow-critical {
+    box-shadow: 0 0 0 1px rgba(232, 64, 64, 0.2), 0 4px 12px rgba(232, 64, 64, 0.12);
+  }
+
+  .glow-high {
+    box-shadow: 0 0 0 1px rgba(245, 166, 35, 0.25), 0 4px 12px rgba(245, 166, 35, 0.1);
+  }
+
+  .glow-primary {
+    box-shadow: 0 4px 14px rgba(45, 125, 210, 0.18);
+  }
+
+  .hero-gradient {
+    background: linear-gradient(180deg, rgba(45, 125, 210, 0.08) 0%, rgba(248, 249, 250, 0) 100%);
+  }
+
+  .cta-gradient {
+    background: linear-gradient(90deg, #2d7dd2 0%, #00b894 100%);
+  }
+
+  .plan-gradient {
+    background: linear-gradient(180deg, #2d7dd2 0%, #00b894 100%);
+  }
+}

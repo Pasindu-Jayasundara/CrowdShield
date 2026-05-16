@@ -1,0 +1,46 @@
+@theme {
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+  /* Primary palette (light mode) */
+  --color-background: #f8f9fa;
+  --color-surface: #ffffff;
+  --color-surface-elevated: #f3f4f6;
+  --color-border: #e1e4e8;
+  --color-border-strong: #d1d5db;
+
+  --color-text: #1a202c;
+  --color-text-muted: #6b7a9e;
+  --color-text-dim: #9ca3af;
+
+  /* Accent colors */
+  --color-primary: #2d7dd2;
+  --color-primary-dim: #2568b0;
+  --color-accent: #00b894;
+  --color-accent-dim: #009e7e;
+  --color-highlight: #4b9eff;
+  --color-on-primary: #ffffff;
+
+  /* Status & severity */
+  --color-critical: #e84040;
+  --color-high: #f5a623;
+  --color-medium: #2d7dd2;
+  --color-low: #22c55e;
+
+  /* Grays */
+  --color-gray-50: #f3f4f6;
+  --color-gray-100: #e5e7eb;
+  --color-gray-200: #d1d5db;
+
+  /* Admin & demo */
+  --color-admin: #9333ea;
+  --color-demo: #f5a623;
+
+  /* Chart palette */
+  --color-chart-1: #2d7dd2;
+  --color-chart-2: #00b894;
+  --color-chart-3: #4b9eff;
+  --color-chart-4: #f5a623;
+  --color-chart-5: #e84040;
+  --color-chart-6: #22c55e;
+}
