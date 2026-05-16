@@ -34,7 +34,8 @@ export function AdminReports() {
                   </div>
                   <p className="mt-2 line-clamp-2 text-sm">{r.content}</p>
                   <p className="mt-1 text-xs text-text-dim">
-                    AI: {r.aiScore} — {r.aiReasoning.slice(0, 80)}...
+                    Threat: {r.threatScore ?? r.aiScore} (AI {r.aiScore}, community{' '}
+                    {r.communityScore ?? 0}) — {r.aiReasoning.slice(0, 60)}...
                   </p>
                 </div>
                 <div className="flex gap-2">

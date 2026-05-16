@@ -1,9 +1,17 @@
+import { computeThreatScore, severityFromThreatScore } from "./threatScore";
+
 export type Severity = "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
 
+const DEFAULT_TREND_SCORE = 50;
+
 export type AnalysisResult = {
-  /** Same as model `confidence` (0–100). */
-  threatScore: number;
+  /** AI model confidence (0–100) — the AI Score component. */
+  aiScore: number;
   confidence: number;
+  communityScore: number;
+  trendScore: number;
+  /** Composite: 0.5×AI + 0.35×Community + 0.15×Trend */
+  threatScore: number;
   severity: Severity;
   scamType: string;
   reasoning: string;
@@ -139,11 +147,17 @@ export function mapAzureAnalysis(payload: AzureAnalysisPayload): AnalysisResult 
   const scam = isScamClassification(payload);
 
   if (!scam) {
-    const threatScore = Math.max(0, Math.min(15, 100 - confidence));
+    const aiScore = Math.max(0, Math.min(100, confidence));
+    const communityScore = 0;
+    const trendScore = DEFAULT_TREND_SCORE;
+    const threatScore = computeThreatScore(aiScore, communityScore, trendScore);
     return {
+      aiScore,
       threatScore,
-      confidence,
-      severity: severityFromConfidence(confidence),
+      confidence: aiScore,
+      communityScore,
+      trendScore,
+      severity: severityFromThreatScore(threatScore),
       scamType: "Safe",
       reasoning:
         confidence >= 80
@@ -158,16 +172,22 @@ export function mapAzureAnalysis(payload: AzureAnalysisPayload): AnalysisResult 
     };
   }
 
-  const threatScore = confidence > 0 ? confidence : 70;
-  const severity = severityFromConfidence(threatScore);
+  const aiScore = confidence > 0 ? confidence : 70;
+  const communityScore = 0;
+  const trendScore = DEFAULT_TREND_SCORE;
+  const threatScore = computeThreatScore(aiScore, communityScore, trendScore);
+  const severity = severityFromThreatScore(threatScore);
   const scamType = formatScamType(payload.scamType);
 
   return {
+    aiScore,
     threatScore,
-    confidence: threatScore,
+    confidence: aiScore,
+    communityScore,
+    trendScore,
     severity,
     scamType,
-    reasoning: `AI flagged this as ${scamType} with ${threatScore}% confidence.`,
+    reasoning: `AI flagged this as ${scamType}. Threat score ${threatScore} (AI ${aiScore}, community ${communityScore}, trend ${trendScore}).`,
     attackPatterns: [scamType, "Suspicious intent"],
     recommendations: [
       "Do not click any links in the message",
@@ -252,8 +272,11 @@ export async function analyzeContent(
   if (!apiKey) {
     console.error("AZURE_OPENAI_API_KEY is not set");
     return {
+      aiScore: 0,
       threatScore: 0,
       confidence: 0,
+      communityScore: 0,
+      trendScore: DEFAULT_TREND_SCORE,
       severity: "LOW",
       scamType: "Unknown",
       reasoning:
@@ -273,8 +296,11 @@ export async function analyzeContent(
   } catch (error) {
     console.error("AI Analysis failed:", error);
     return {
+      aiScore: 0,
       threatScore: 0,
       confidence: 0,
+      communityScore: 0,
+      trendScore: DEFAULT_TREND_SCORE,
       severity: "LOW",
       scamType: "Unknown",
       reasoning: "AI analysis is temporarily unavailable. Please try again.",

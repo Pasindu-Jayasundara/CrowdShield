@@ -57,7 +57,7 @@ export function PublicSubmitReport() {
         region: region || undefined,
         scamType: result.scamType,
         severity: result.severity,
-        aiScore: result.threatScore,
+        aiScore: result.aiScore,
         aiReasoning: result.reasoning,
         attackPatterns: result.attackPatterns,
         recommendations: result.recommendations,
@@ -149,6 +149,10 @@ export function PublicSubmitReport() {
                 <ScamTypeTag type={result.scamType} />
               </div>
               <p className="mt-4 text-sm text-text-muted">{result.reasoning}</p>
+              <p className="mt-2 text-xs text-text-dim">
+                Score breakdown — AI: {result.aiScore} · Community: {result.communityScore} ·
+                Trend: {result.trendScore}
+              </p>
             </div>
           </motion.div>
           <motion.div className="mt-6">

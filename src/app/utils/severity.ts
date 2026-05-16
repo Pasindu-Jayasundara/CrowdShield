@@ -1,5 +1,16 @@
 import type { Severity } from '../types';
 
+const SEVERITY_LABELS: Record<Severity, string> = {
+  LOW: '🟢 Low',
+  MEDIUM: '🟡 Medium',
+  HIGH: '🟠 High',
+  CRITICAL: '🔴 Critical',
+};
+
+export function severityLabel(severity: Severity): string {
+  return SEVERITY_LABELS[severity];
+}
+
 export function severityColor(severity: Severity, solid = false): string {
   if (solid) {
     switch (severity) {

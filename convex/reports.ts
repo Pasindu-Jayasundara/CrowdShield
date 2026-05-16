@@ -1,6 +1,9 @@
 import { mutation, query } from "./_generated/server";
+import type { Doc } from "./_generated/dataModel";
+import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { v } from "convex/values";
 import { requireRole } from "./lib/session";
+import { computeReportScores } from "./lib/threatScore";
 import {
   platformValidator,
   reportStatusValidator,
@@ -9,6 +12,23 @@ import {
 } from "./lib/validators";
 
 const MAX_REPORTS = 500;
+
+async function loadScoreContext(ctx: QueryCtx | MutationCtx) {
+  const [campaigns, allReports] = await Promise.all([
+    ctx.db.query("campaigns").take(50),
+    ctx.db.query("reports").take(MAX_REPORTS),
+  ]);
+  return { campaigns, allReports };
+}
+
+function enrichReport<T extends Doc<"reports">>(
+  report: T,
+  campaigns: Awaited<ReturnType<typeof loadScoreContext>>["campaigns"],
+  allReports: Awaited<ReturnType<typeof loadScoreContext>>["allReports"],
+) {
+  const scores = computeReportScores(report, campaigns, allReports);
+  return { ...report, ...scores };
+}
 
 export const list = query({
   args: {
@@ -19,6 +39,7 @@ export const list = query({
   },
   handler: async (ctx, args) => {
     const limit = Math.min(args.limit ?? MAX_REPORTS, MAX_REPORTS);
+    const { campaigns, allReports } = await loadScoreContext(ctx);
 
     if (args.severity) {
       const reports = await ctx.db
@@ -26,7 +47,9 @@ export const list = query({
         .withIndex("by_severity", (q) => q.eq("severity", args.severity!))
         .order("desc")
         .take(limit);
-      return filterReports(reports, args.regions, args.status);
+      return filterReports(reports, args.regions, args.status).map((r) =>
+        enrichReport(r, campaigns, allReports),
+      );
     }
 
     if (args.status) {
@@ -35,7 +58,9 @@ export const list = query({
         .withIndex("by_status", (q) => q.eq("status", args.status!))
         .order("desc")
         .take(limit);
-      return filterReports(reports, args.regions, undefined);
+      return filterReports(reports, args.regions, undefined).map((r) =>
+        enrichReport(r, campaigns, allReports),
+      );
     }
 
     const reports = await ctx.db
@@ -43,18 +68,22 @@ export const list = query({
       .withIndex("by_createdAt")
       .order("desc")
       .take(limit);
-    return filterReports(reports, args.regions, args.status);
+    return filterReports(reports, args.regions, args.status).map((r) =>
+      enrichReport(r, campaigns, allReports),
+    );
   },
 });
 
 export const get = query({
   args: {},
   handler: async (ctx) => {
-    return await ctx.db
+    const { campaigns, allReports } = await loadScoreContext(ctx);
+    const reports = await ctx.db
       .query("reports")
       .withIndex("by_createdAt")
       .order("desc")
       .take(MAX_REPORTS);
+    return reports.map((r) => enrichReport(r, campaigns, allReports));
   },
 });
 
@@ -96,14 +125,29 @@ export const create = mutation({
   },
   handler: async (ctx, args) => {
     const createdAt = new Date().toISOString();
-    return await ctx.db.insert("reports", {
+    const { campaigns, allReports } = await loadScoreContext(ctx);
+
+    const draft = {
       ...args,
       votesScam: 0,
       votesSuspicious: 0,
       votesSafe: 0,
       totalVotes: 0,
-      status: "pending",
+      status: "pending" as const,
       createdAt,
+    };
+
+    const scores = computeReportScores(draft, campaigns, [
+      ...allReports,
+      { scamType: args.scamType, region: args.region, createdAt },
+    ]);
+
+    return await ctx.db.insert("reports", {
+      ...draft,
+      communityScore: scores.communityScore,
+      trendScore: scores.trendScore,
+      threatScore: scores.threatScore,
+      severity: scores.severity,
     });
   },
 });
@@ -158,16 +202,27 @@ export const vote = mutation({
       createdAt: new Date().toISOString(),
     });
 
-    const patch =
-      args.voteType === "scam"
-        ? { votesScam: report.votesScam + 1 }
-        : args.voteType === "suspicious"
-          ? { votesSuspicious: report.votesSuspicious + 1 }
-          : { votesSafe: report.votesSafe + 1 };
+    const updated = {
+      ...report,
+      votesScam: report.votesScam + (args.voteType === "scam" ? 1 : 0),
+      votesSuspicious:
+        report.votesSuspicious + (args.voteType === "suspicious" ? 1 : 0),
+      votesSafe: report.votesSafe + (args.voteType === "safe" ? 1 : 0),
+      totalVotes: report.totalVotes + 1,
+    };
+
+    const { campaigns, allReports } = await loadScoreContext(ctx);
+    const scores = computeReportScores(updated, campaigns, allReports);
 
     await ctx.db.patch("reports", args.reportId, {
-      ...patch,
-      totalVotes: report.totalVotes + 1,
+      votesScam: updated.votesScam,
+      votesSuspicious: updated.votesSuspicious,
+      votesSafe: updated.votesSafe,
+      totalVotes: updated.totalVotes,
+      communityScore: scores.communityScore,
+      trendScore: scores.trendScore,
+      threatScore: scores.threatScore,
+      severity: scores.severity,
     });
   },
 });

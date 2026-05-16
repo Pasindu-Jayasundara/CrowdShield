@@ -1,8 +1,7 @@
 import type { Severity } from '../types';
+import { severityFromThreatScore } from './threatScore';
 
+/** @deprecated Use severityFromThreatScore — kept for callers using threat score bands. */
 export function severityFromScore(score: number): Severity {
-  if (score >= 80) return 'CRITICAL';
-  if (score >= 60) return 'HIGH';
-  if (score >= 40) return 'MEDIUM';
-  return 'LOW';
+  return severityFromThreatScore(score);
 }

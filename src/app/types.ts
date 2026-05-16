@@ -11,6 +11,9 @@ export interface Report {
   scamType: string;
   severity: Severity;
   aiScore: number;
+  communityScore?: number;
+  trendScore?: number;
+  threatScore?: number;
   aiReasoning: string;
   attackPatterns: string[];
   recommendations: string[];
@@ -37,8 +40,11 @@ export interface Campaign {
 }
 
 export interface AIAnalysisResult {
+  aiScore: number;
   threatScore: number;
   confidence: number;
+  communityScore: number;
+  trendScore: number;
   severity: Severity;
   scamType: string;
   reasoning: string;

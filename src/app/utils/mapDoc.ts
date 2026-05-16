@@ -8,10 +8,17 @@ import type {
   Subscription,
   SupportMessage,
 } from "../types";
+import { severityFromThreatScore } from "./threatScore";
 
 export function toReport(doc: Doc<"reports">): Report {
   const { _id, ...rest } = doc;
-  return { ...rest, id: _id };
+  const threatScore = rest.threatScore ?? rest.aiScore;
+  return {
+    ...rest,
+    id: _id,
+    threatScore,
+    severity: severityFromThreatScore(threatScore),
+  };
 }
 
 export function toCampaign(doc: Doc<"campaigns">): Campaign {
