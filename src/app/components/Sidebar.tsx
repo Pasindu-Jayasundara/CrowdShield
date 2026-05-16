@@ -11,6 +11,8 @@ import {
   Upload,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { useSignOut } from '../../hooks/useSignOut';
+import { useConvexAuth } from 'convex/react';
 
 const links = [
   { to: '/analyst', label: 'Dashboard', icon: LayoutDashboard },
@@ -25,6 +27,8 @@ const links = [
 export function Sidebar() {
   const { pathname } = useLocation();
   const { demoMode, exitDemo } = useApp();
+  const { isAuthenticated } = useConvexAuth();
+  const { signOut, isSigningOut } = useSignOut();
 
   return (
     <aside className="hidden w-56 shrink-0 flex-col border-r border-border bg-surface lg:flex">
@@ -59,6 +63,17 @@ export function Sidebar() {
           <span className="h-2 w-2 rounded-full bg-critical" />
           Simulation Mode
         </div>
+        {isAuthenticated && (
+          <button
+            type="button"
+            disabled={isSigningOut}
+            onClick={() => void signOut()}
+            className="mb-1 flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-text-muted hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
+          >
+            <LogOut className="h-4 w-4" />
+            Sign Out
+          </button>
+        )}
         {demoMode ? (
           <button
             type="button"

@@ -25,6 +25,8 @@ import { PublicFeed } from './screens/PublicFeed';
 import { PublicLanding } from './screens/PublicLanding';
 import { PublicSubmitReport } from './screens/PublicSubmitReport';
 import { SubmitReport } from './screens/SubmitReport';
+import SignInPage from './screens/auth/SignInPage';
+import { AuthRedirect } from '../components/AuthRedirect';
 
 function PublicLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -61,32 +63,97 @@ function AdminLayout({ children }: { children: React.ReactNode }) {
 }
 
 function AppRoutes() {
-  const { role } = useApp();
+  const { role, isLoading } = useApp();
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+      </div>
+    );
+  }
 
   return (
     <Routes>
-      <Route path="/" element={<PublicLayout><PublicLanding /></PublicLayout>} />
+      {/* Public home — redirects logged-in users to their dashboard */}
+      <Route 
+        path="/" 
+        element={
+          role === 'admin' ? (
+            <Navigate to="/admin" replace />
+          ) : role === 'analyst' ? (
+            <Navigate to="/analyst" replace />
+          ) : (
+            <PublicLayout><PublicLanding /></PublicLayout>
+          )
+        } 
+      />
+
+      {/* Always-public routes */}
       <Route path="/feed" element={<PublicLayout><PublicFeed /></PublicLayout>} />
       <Route path="/submit" element={<PublicLayout><PublicSubmitReport /></PublicLayout>} />
       <Route path="/near-me" element={<PublicLayout><MyLocationThreats /></PublicLayout>} />
       <Route path="/pricing" element={<PublicLayout><Pricing /></PublicLayout>} />
 
-      <Route path="/analyst" element={<AnalystLayout><Dashboard /></AnalystLayout>} />
-      <Route path="/analyst/feed" element={<AnalystLayout><LiveFeed /></AnalystLayout>} />
-      <Route path="/analyst/geo" element={<AnalystLayout><GeoMap /></AnalystLayout>} />
-      <Route path="/analyst/campaigns" element={<AnalystLayout><Campaigns /></AnalystLayout>} />
-      <Route path="/analyst/analytics" element={<AnalystLayout><Analytics /></AnalystLayout>} />
-      <Route path="/analyst/alerts" element={<AnalystLayout><Alerts /></AnalystLayout>} />
-      <Route path="/analyst/submit" element={<AnalystLayout><SubmitReport /></AnalystLayout>} />
+      {/* Sign-in — redirects already-logged-in users to their dashboard */}
+      <Route 
+        path="/signin" 
+        element={
+          role === 'admin' ? (
+            <Navigate to="/admin" replace />
+          ) : role === 'analyst' ? (
+            <Navigate to="/analyst" replace />
+          ) : (
+            <SignInPage />
+          )
+        } 
+      />
 
-      <Route path="/admin" element={<AdminLayout><AdminDashboard /></AdminLayout>} />
-      <Route path="/admin/users" element={<AdminLayout><AdminUsers /></AdminLayout>} />
-      <Route path="/admin/reports" element={<AdminLayout><AdminReports /></AdminLayout>} />
-      <Route path="/admin/subscriptions" element={<AdminLayout><AdminSubscriptions /></AdminLayout>} />
-      <Route path="/admin/messages" element={<AdminLayout><AdminMessages /></AdminLayout>} />
-      <Route path="/admin/announcements" element={<AdminLayout><AdminAnnouncements /></AdminLayout>} />
-      <Route path="/admin/newsletter" element={<AdminLayout><AdminNewsletter /></AdminLayout>} />
+      {/* Protected Analyst Routes — accessible by 'analyst' and 'admin' roles */}
+      <Route path="/analyst/*" element={
+        <AuthRedirect mode="requireAuth">
+          {role === 'analyst' || role === 'admin' ? (
+            <Routes>
+              <Route path="/" element={<AnalystLayout><Dashboard /></AnalystLayout>} />
+              <Route path="/feed" element={<AnalystLayout><LiveFeed /></AnalystLayout>} />
+              <Route path="/geo" element={<AnalystLayout><GeoMap /></AnalystLayout>} />
+              <Route path="/campaigns" element={<AnalystLayout><Campaigns /></AnalystLayout>} />
+              <Route path="/analytics" element={<AnalystLayout><Analytics /></AnalystLayout>} />
+              <Route path="/alerts" element={<AnalystLayout><Alerts /></AnalystLayout>} />
+              <Route path="/submit" element={<AnalystLayout><SubmitReport /></AnalystLayout>} />
+            </Routes>
+          ) : (
+            /* Authenticated but wrong role (e.g. 'public') — back to home */
+            <Navigate to="/" replace />
+          )}
+        </AuthRedirect>
+      } />
 
+      {/* Protected Admin Routes — accessible by 'admin' role only */}
+      <Route path="/admin/*" element={
+        <AuthRedirect mode="requireAuth">
+          {role === 'admin' ? (
+            <Routes>
+              <Route path="/" element={<AdminLayout><AdminDashboard /></AdminLayout>} />
+              <Route path="/users" element={<AdminLayout><AdminUsers /></AdminLayout>} />
+              <Route path="/reports" element={<AdminLayout><AdminReports /></AdminLayout>} />
+              <Route path="/subscriptions" element={<AdminLayout><AdminSubscriptions /></AdminLayout>} />
+              <Route path="/messages" element={<AdminLayout><AdminMessages /></AdminLayout>} />
+              <Route path="/announcements" element={<AdminLayout><AdminAnnouncements /></AdminLayout>} />
+              <Route path="/newsletter" element={<AdminLayout><AdminNewsletter /></AdminLayout>} />
+            </Routes>
+          ) : (
+            /* Authenticated but not admin — redirect to appropriate dashboard */
+            role === 'analyst' ? (
+              <Navigate to="/analyst" replace />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          )}
+        </AuthRedirect>
+      } />
+
+      {/* Catch-all: redirect based on role */}
       <Route
         path="*"
         element={

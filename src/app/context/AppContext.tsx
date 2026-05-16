@@ -1,5 +1,7 @@
-import { createContext, useContext, useState, type ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import type { UserRole } from '../types';
+import { useQuery } from 'convex/react';
+import { api } from '../../../convex/_generated/api';
 
 type DemoType = 'analyst' | 'admin' | null;
 
@@ -7,6 +9,8 @@ interface AppContextValue {
   role: UserRole;
   demoMode: boolean;
   demoType: DemoType;
+  user: any;
+  isLoading: boolean;
   enterAnalystDemo: () => void;
   enterAdminDemo: () => void;
   exitDemo: () => void;
@@ -16,9 +20,20 @@ interface AppContextValue {
 const AppContext = createContext<AppContextValue | null>(null);
 
 export function AppProvider({ children }: { children: ReactNode }) {
+  const viewer = useQuery(api.users.viewerRole);
+  const isAuthLoading = viewer === undefined;
+  const user = viewer?.user ?? null;
+
   const [role, setRole] = useState<UserRole>('public');
   const [demoMode, setDemoMode] = useState(false);
   const [demoType, setDemoType] = useState<DemoType>(null);
+
+  useEffect(() => {
+    if (!isAuthLoading && !demoMode) {
+      // viewer.role can be null when unauthenticated — default to 'public'
+      setRole((viewer?.role as UserRole) ?? 'public');
+    }
+  }, [isAuthLoading, viewer, demoMode]);
 
   const enterAnalystDemo = () => {
     setDemoMode(true);
@@ -35,12 +50,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const exitDemo = () => {
     setDemoMode(false);
     setDemoType(null);
-    setRole('public');
+    // Restore the real role from Convex (or fall back to 'public')
+    setRole((viewer?.role as UserRole) ?? 'public');
   };
 
   return (
     <AppContext.Provider
-      value={{ role, demoMode, demoType, enterAnalystDemo, enterAdminDemo, exitDemo, setRole }}
+      value={{
+        role,
+        demoMode,
+        demoType,
+        user,
+        isLoading: isAuthLoading,
+        enterAnalystDemo,
+        enterAdminDemo,
+        exitDemo,
+        setRole
+      }}
     >
       {children}
     </AppContext.Provider>

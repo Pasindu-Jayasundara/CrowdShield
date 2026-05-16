@@ -1,8 +1,13 @@
 import { Bell, LogOut, Shield } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { LivePulseDot } from './LivePulseDot';
+import { useSignOut } from '../../hooks/useSignOut';
+import { useConvexAuth } from 'convex/react';
 
 export function AnalystTopNav() {
+  const { isAuthenticated } = useConvexAuth();
+  const { signOut, isSigningOut } = useSignOut();
+
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-surface">
       <div className="flex h-14 items-center justify-between gap-4 px-4 lg:px-6">
@@ -35,10 +40,22 @@ export function AnalystTopNav() {
             <span className="flex h-5 w-5 items-center justify-center rounded-full bg-on-primary/20">A</span>
             ANALYST
           </div>
-          <Link to="/" className="hidden items-center gap-1 text-sm text-text-muted hover:text-text sm:flex">
-            <LogOut className="h-4 w-4" />
-            Logout
-          </Link>
+          {isAuthenticated ? (
+            <button 
+              type="button"
+              disabled={isSigningOut}
+              onClick={() => void signOut()}
+              className="flex items-center gap-1 text-sm text-text-muted hover:text-red-600 disabled:opacity-50"
+            >
+              <LogOut className="h-4 w-4" />
+              <span className="hidden xs:inline">Logout</span>
+            </button>
+          ) : (
+            <Link to="/" className="flex items-center gap-1 text-sm text-text-muted hover:text-text">
+              <LogOut className="h-4 w-4" />
+              <span className="hidden xs:inline">Logout</span>
+            </Link>
+          )}
         </div>
       </div>
     </header>
