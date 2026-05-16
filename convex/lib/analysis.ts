@@ -18,7 +18,21 @@ type AzureAnalysisPayload = {
   confidence?: string | number;
 };
 
-const SYSTEM_INSTRUCTION = `You are a scam detection AI. Analyze the user message and respond strictly with a JSON object containing keys: 'scamType' (e.g., safe, phishing, job_scam, investment_crypto, romance_scam), 'severity' (LOW, MEDIUM, HIGH, CRITICAL), 'aiScore' ('1' for scam, '0' for safe), and 'confidence' (0-100 percentage). Do not include markdown formatting or backticks around the JSON.`;
+const SYSTEM_INSTRUCTION = `You are a scam detection AI. Analyze the user message and respond strictly with a JSON object.
+
+The JSON must contain these exact keys:
+- 'scamType': (e.g., safe, phishing, job_scam, investment_crypto, romance_scam)
+- 'confidence': (A percentage score from 0 to 100 based on how likely the message is a scam)
+- 'severity': (This must dynamically change based on the 'confidence' score using the rules below)
+- 'aiScore': ('1' if confidence is 50 or higher, '0' if confidence is below 50)
+
+Rules for assigning 'severity' based on 'confidence':
+- If confidence is 0% to 25%: severity must be "LOW"
+- If confidence is 26% to 60%: severity must be "MEDIUM"
+- If confidence is 61% to 85%: severity must be "HIGH"
+- If confidence is 86% to 100%: severity must be "CRITICAL"
+
+Do not include markdown formatting or backticks around the JSON. Output only the raw JSON string.`;
 
 const DEFAULT_ENDPOINT =
   "https://crowedshield.services.ai.azure.com/api/projects/crowedshield/openai/v1/responses";
@@ -28,19 +42,12 @@ const DEFAULT_MODEL =
 
 const SAFE_SCAM_TYPES = new Set(["safe", "legitimate", "benign", "not_scam", "not scam"]);
 
-export function severityFromScore(score: number): Severity {
-  if (score >= 80) return "CRITICAL";
-  if (score >= 60) return "HIGH";
-  if (score >= 40) return "MEDIUM";
+/** Severity bands from model instruction (confidence → severity). */
+export function severityFromConfidence(confidence: number): Severity {
+  if (confidence >= 86) return "CRITICAL";
+  if (confidence >= 61) return "HIGH";
+  if (confidence >= 26) return "MEDIUM";
   return "LOW";
-}
-
-function normalizeSeverity(value: string | undefined, threatScore: number): Severity {
-  const upper = value?.trim().toUpperCase();
-  if (upper === "CRITICAL" || upper === "HIGH" || upper === "MEDIUM" || upper === "LOW") {
-    return upper;
-  }
-  return severityFromScore(threatScore);
 }
 
 function formatScamType(raw: string | undefined): string {
@@ -54,12 +61,13 @@ function formatScamType(raw: string | undefined): string {
 }
 
 function isScamClassification(payload: AzureAnalysisPayload): boolean {
-  const score = String(payload.aiScore ?? "").trim();
-  if (score === "1") return true;
-  if (score === "0") return false;
+  const confidence = parseConfidence(payload.confidence);
+  const aiScore = String(payload.aiScore ?? "").trim();
+  if (aiScore === "0") return false;
+  if (aiScore === "1") return true;
   const type = payload.scamType?.trim().toLowerCase() ?? "";
   if (SAFE_SCAM_TYPES.has(type)) return false;
-  return type.length > 0 && type !== "unknown";
+  return confidence >= 50;
 }
 
 function parseConfidence(value: string | number | undefined): number {
@@ -135,7 +143,7 @@ export function mapAzureAnalysis(payload: AzureAnalysisPayload): AnalysisResult 
     return {
       threatScore,
       confidence,
-      severity: "LOW",
+      severity: severityFromConfidence(confidence),
       scamType: "Safe",
       reasoning:
         confidence >= 80
@@ -150,9 +158,8 @@ export function mapAzureAnalysis(payload: AzureAnalysisPayload): AnalysisResult 
     };
   }
 
-  // Threat score mirrors model confidence exactly (no severity-based caps).
   const threatScore = confidence > 0 ? confidence : 70;
-  const severity = normalizeSeverity(payload.severity, threatScore);
+  const severity = severityFromConfidence(threatScore);
   const scamType = formatScamType(payload.scamType);
 
   return {
