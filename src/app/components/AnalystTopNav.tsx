@@ -1,8 +1,17 @@
 import { Bell, LogOut, Shield } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { useApp } from '../context/AppContext';
 import { LivePulseDot } from './LivePulseDot';
 
 export function AnalystTopNav() {
+  const { user, logout } = useApp();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    await logout();
+    navigate('/');
+  };
+
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-surface">
       <div className="flex h-14 items-center justify-between gap-4 px-4 lg:px-6">
@@ -32,13 +41,19 @@ export function AnalystTopNav() {
             </span>
           </button>
           <div className="flex items-center gap-1.5 rounded-full bg-accent px-3 py-1.5 text-xs font-bold text-on-primary">
-            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-on-primary/20">A</span>
-            ANALYST
+            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-on-primary/20">
+              {(user?.username ?? 'A').slice(0, 1).toUpperCase()}
+            </span>
+            {(user?.role ?? 'ANALYST').toUpperCase()}
           </div>
-          <Link to="/" className="hidden items-center gap-1 text-sm text-text-muted hover:text-text sm:flex">
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="hidden items-center gap-1 text-sm text-text-muted hover:text-text sm:flex"
+          >
             <LogOut className="h-4 w-4" />
             Logout
-          </Link>
+          </button>
         </div>
       </div>
     </header>

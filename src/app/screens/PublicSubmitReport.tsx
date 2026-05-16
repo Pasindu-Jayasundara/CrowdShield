@@ -1,17 +1,14 @@
+import { useAction, useMutation } from 'convex/react';
 import { motion } from 'motion/react';
 import { Brain, Check, Loader2, Upload } from 'lucide-react';
 import { useState } from 'react';
+import { api } from '../../../convex/_generated/api';
 import { AiScoreRing } from '../components/AiScoreRing';
 import { PlatformSelector } from '../components/PlatformSelector';
 import { ScamTypeTag } from '../components/ScamTypeTag';
 import { SeverityBadge } from '../components/SeverityBadge';
 import { VoteButtons } from '../components/VoteButtons';
-import { mockAIAnalysis } from '../data/mockData';
 import type { AIAnalysisResult, Platform } from '../types';
-
-// Import Convex hooks and your API
-import { useMutation } from "convex/react";
-import { api } from "../../../convex/_generated/api"; 
 
 export function PublicSubmitReport() {
   const [content, setContent] = useState('');
@@ -19,10 +16,11 @@ export function PublicSubmitReport() {
   const [region, setRegion] = useState('');
   const [context, setContext] = useState('');
   const [loading, setLoading] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false); // Track DB submission state
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [result, setResult] = useState<AIAnalysisResult | null>(null);
+  const [submittedReportId, setSubmittedReportId] = useState<string | null>(null);
 
-  // Initialize the Convex mutation
+  const analyze = useAction(api.ai.analyze);
   const createReport = useMutation(api.reports.create);
 
   const handleAnalyze = async (e: React.FormEvent) => {
@@ -30,41 +28,41 @@ export function PublicSubmitReport() {
     if (!content.trim()) return;
     setLoading(true);
     setResult(null);
-    const analysis = await mockAIAnalysis(content);
-    setResult(analysis);
-    setLoading(false);
+    setSubmittedReportId(null);
+    try {
+      const analysis = await analyze({ content });
+      setResult(analysis);
+    } catch (error) {
+      console.error('AI analysis failed:', error);
+      alert('Analysis failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // Handler to submit the analyzed report to Convex
   const handleSubmitToDatabase = async () => {
     if (!result || !content) return;
 
     setIsSubmitting(true);
-    
+
     try {
-      await createReport({
-        content: content,
-        platform: platform, // Use Real State
-        region: region || 'Global', // Fallback if region is empty
+      const reportId = await createReport({
+        content,
+        platform,
+        region: region || undefined,
         scamType: result.scamType,
         severity: result.severity,
-        aiScore: result.threatScore, 
+        aiScore: result.threatScore,
         aiReasoning: result.reasoning,
         attackPatterns: result.attackPatterns,
         recommendations: result.recommendations,
       });
-      alert("Report submitted successfully!");
-
-      // Reset form on success
-      setContent("");
-      setPlatform('whatsapp');
-      setRegion("");
-      setContext("");
-      setResult(null);
+      setSubmittedReportId(reportId);
+      alert('Report submitted successfully!');
     } catch (error) {
-      console.error("Failed to submit report:", error);
-      alert("Error submitting report.");
-    } finally{
+      console.error('Failed to submit report:', error);
+      alert('Error submitting report.');
+    } finally {
       setIsSubmitting(false);
     }
   };
@@ -166,28 +164,32 @@ export function PublicSubmitReport() {
               </li>
             ))}
           </ul>
-          
-          {/* Replaced static 'Added to live feed' with functional submission button */}
-          <button
-            onClick={handleSubmitToDatabase}
-            disabled={isSubmitting}
-            className="mt-8 flex w-full items-center justify-center gap-2 rounded-xl btn-primary py-3.5 text-base font-semibold disabled:opacity-60 bg-accent hover:bg-accent/90 text-white"
-          >
-            {isSubmitting ? (
-              <>
-                <Loader2 className="h-5 w-5 animate-spin" />
-                Saving to Database...
-              </>
-            ) : (
-              <>
-                <Check className="h-5 w-5" />
-                Confirm & Submit to Crowdshield
-              </>
-            )}
-          </button>
+
+          {!submittedReportId ? (
+            <button
+              type="button"
+              onClick={handleSubmitToDatabase}
+              disabled={isSubmitting}
+              className="mt-8 flex w-full items-center justify-center gap-2 rounded-xl bg-accent py-3.5 text-base font-semibold text-white hover:bg-accent/90 disabled:opacity-60"
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  Saving to Database...
+                </>
+              ) : (
+                <>
+                  <Check className="h-5 w-5" />
+                  Confirm & Submit to Crowdshield
+                </>
+              )}
+            </button>
+          ) : (
+            <p className="mt-8 text-center text-sm font-medium text-accent">Report saved to the live feed.</p>
+          )}
 
           <div className="mt-4 border-t border-border pt-4">
-            <VoteButtons reportId="new" />
+            <VoteButtons reportId={submittedReportId ?? 'new'} />
           </div>
         </motion.div>
       )}

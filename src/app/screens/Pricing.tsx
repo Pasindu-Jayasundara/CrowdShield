@@ -1,8 +1,8 @@
 import { BarChart3, Check, Crown, Globe, Shield, Target, Zap } from 'lucide-react';
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
+import { LoginModal } from '../components/LoginModal';
 import { PaymentModal } from '../components/PaymentModal';
-import { useApp } from '../context/AppContext';
 
 const freeFeatures = ['Submit scam reports', 'AI threat analysis', 'Live community feed', 'Vote on reports', 'Location threats', 'Newsletter'];
 const analystFeatures = [
@@ -13,9 +13,9 @@ const analystFeatures = [
 ];
 
 export function Pricing() {
-  const navigate = useNavigate();
-  const { enterAnalystDemo, enterAdminDemo } = useApp();
   const [paymentOpen, setPaymentOpen] = useState(false);
+  const [loginOpen, setLoginOpen] = useState(false);
+  const [loginRole, setLoginRole] = useState<'analyst' | 'admin'>('analyst');
   const [selectedPlan, setSelectedPlan] = useState<{ plan: 'monthly' | 'annual'; amount: number }>({
     plan: 'monthly',
     amount: 49,
@@ -70,29 +70,29 @@ export function Pricing() {
 
       <div className="card mt-8 border-accent/30 bg-accent/5 p-8 text-center">
         <h3 className="text-lg font-bold">Try Before You Buy</h3>
-        <p className="mt-2 text-sm text-text-muted">Explore full analyst and admin dashboards — no payment required</p>
+        <p className="mt-2 text-sm text-text-muted">Sign in with a staff account to access dashboards</p>
         <div className="mt-6 flex flex-wrap justify-center gap-4">
           <button
             type="button"
             onClick={() => {
-              enterAnalystDemo();
-              navigate('/analyst');
+              setLoginRole('analyst');
+              setLoginOpen(true);
             }}
             className="btn-primary inline-flex items-center gap-2 rounded-xl px-6 py-3"
           >
             <Shield className="h-4 w-4" />
-            View Analyst Dashboard
+            Analyst Login
           </button>
           <button
             type="button"
             onClick={() => {
-              enterAdminDemo();
-              navigate('/admin');
+              setLoginRole('admin');
+              setLoginOpen(true);
             }}
             className="inline-flex items-center gap-2 rounded-xl bg-admin px-6 py-3 font-semibold text-on-primary"
           >
             <Crown className="h-4 w-4" />
-            View Admin Dashboard
+            Admin Login
           </button>
         </div>
       </div>
@@ -129,7 +129,7 @@ export function Pricing() {
         <div className="mt-8 space-y-4">
           {[
             { q: 'Can I cancel anytime?', a: 'Yes. Monthly plans cancel at the end of the billing period.' },
-            { q: 'What is demo mode?', a: 'Try all analyst and admin screens without payment.' },
+            { q: 'How do I access analyst tools?', a: 'Use staff login with an analyst or admin account.' },
           ].map((faq) => (
             <div key={faq.q} className="card p-5">
               <p className="font-semibold">{faq.q}</p>
@@ -146,6 +146,7 @@ export function Pricing() {
       </p>
 
       <PaymentModal open={paymentOpen} onClose={() => setPaymentOpen(false)} plan={selectedPlan.plan} amount={selectedPlan.amount} />
+      <LoginModal open={loginOpen} onClose={() => setLoginOpen(false)} defaultRole={loginRole} />
     </div>
   );
 }

@@ -22,9 +22,13 @@ export default defineSchema({
     votesSuspicious: v.number(),
     votesSafe: v.number(),
     totalVotes: v.number(),
-    createdAt: v.string(), // Consider using Convex's built-in `_creationTime` later
+    createdAt: v.string(),
     status: StatusType,
-  }),
+  })
+    .index("by_severity", ["severity"])
+    .index("by_region", ["region"])
+    .index("by_status", ["status"])
+    .index("by_createdAt", ["createdAt"]),
 
   campaigns: defineTable({
     name: v.string(),
@@ -48,7 +52,17 @@ export default defineSchema({
     reportsSubmitted: v.number(),
     createdAt: v.string(),
     isActive: v.boolean(),
-  }),
+    passwordHash: v.optional(v.string()),
+  }).index("by_email", ["email"]),
+
+  sessions: defineTable({
+    token: v.string(),
+    userId: v.id("users"),
+    expiresAt: v.number(),
+    createdAt: v.string(),
+  })
+    .index("by_token", ["token"])
+    .index("by_userId", ["userId"]),
 
   supportMessages: defineTable({
     subject: v.string(),
@@ -64,7 +78,7 @@ export default defineSchema({
         createdAt: v.string(),
       })
     ),
-  }),
+  }).index("by_status", ["status"]),
 
   subscriptions: defineTable({
     userEmail: v.string(),
@@ -72,5 +86,13 @@ export default defineSchema({
     amount: v.number(),
     status: v.union(v.literal('active'), v.literal('cancelled'), v.literal('past_due'), v.literal('expired')),
     nextBilling: v.string(),
-  }),
+  }).index("by_status", ["status"]),
+
+  // One row per (report, voter) — prevents duplicate votes across refreshes/devices
+  reportVotes: defineTable({
+    reportId: v.id("reports"),
+    voterId: v.string(),
+    voteType: v.union(v.literal("scam"), v.literal("suspicious"), v.literal("safe")),
+    createdAt: v.string(),
+  }).index("by_report_and_voter", ["reportId", "voterId"]),
 });

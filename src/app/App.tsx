@@ -1,8 +1,7 @@
-import { motion } from 'motion/react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { AdminSidebar } from './components/AdminSidebar';
 import { AnalystTopNav } from './components/AnalystTopNav';
-import { DemoBanner } from './components/DemoBanner';
+import { ProtectedRoute } from './components/ProtectedRoute';
 import { PublicNav } from './components/PublicNav';
 import { Sidebar } from './components/Sidebar';
 import { AppProvider, useApp } from './context/AppContext';
@@ -37,26 +36,28 @@ function PublicLayout({ children }: { children: React.ReactNode }) {
 
 function AnalystLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex min-h-screen flex-col bg-background lg:flex-row">
-      <Sidebar />
-      <motion.div className="flex min-h-screen flex-1 flex-col">
-        <AnalystTopNav />
-        <DemoBanner variant="analyst" />
-        <main className="flex-1 overflow-y-auto p-4 lg:p-6">{children}</main>
-      </motion.div>
-    </div>
+    <ProtectedRoute allowedRoles={['analyst', 'admin']}>
+      <div className="flex min-h-screen flex-col bg-background lg:flex-row">
+        <Sidebar />
+        <div className="flex min-h-screen flex-1 flex-col">
+          <AnalystTopNav />
+          <main className="flex-1 overflow-y-auto p-4 lg:p-6">{children}</main>
+        </div>
+      </div>
+    </ProtectedRoute>
   );
 }
 
 function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex min-h-screen bg-background">
-      <AdminSidebar />
-      <div className="flex flex-1 flex-col overflow-hidden">
-        <DemoBanner variant="admin" />
-        <main className="flex-1 overflow-y-auto">{children}</main>
+    <ProtectedRoute allowedRoles={['admin']}>
+      <div className="flex min-h-screen bg-background">
+        <AdminSidebar />
+        <div className="flex flex-1 flex-col overflow-hidden">
+          <main className="flex-1 overflow-y-auto">{children}</main>
+        </div>
       </div>
-    </div>
+    </ProtectedRoute>
   );
 }
 

@@ -10,7 +10,7 @@ import {
   Settings,
   Users,
 } from 'lucide-react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 
 const links = [
@@ -25,18 +25,24 @@ const links = [
 
 export function AdminSidebar() {
   const { pathname } = useLocation();
-  const { demoMode, exitDemo } = useApp();
+  const navigate = useNavigate();
+  const { user, logout } = useApp();
+
+  const handleLogout = async () => {
+    await logout();
+    navigate('/');
+  };
 
   return (
     <aside className="flex w-64 shrink-0 flex-col border-r border-border bg-surface">
       <div className="border-b border-border p-4">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-admin text-sm font-bold text-on-primary">
-            A
+            {(user?.username ?? 'A').slice(0, 1).toUpperCase()}
           </div>
           <div>
-            <p className="text-sm font-semibold text-text">Admin User</p>
-            <p className="text-xs text-text-muted">admin@crowdshield.com</p>
+            <p className="text-sm font-semibold text-text">{user?.username ?? 'Admin'}</p>
+            <p className="text-xs text-text-muted">{user?.email ?? 'admin@crowdshield.com'}</p>
           </div>
         </div>
       </div>
@@ -79,27 +85,14 @@ export function AdminSidebar() {
       </nav>
 
       <div className="space-y-2 border-t border-border p-3">
-        <div className="rounded-lg bg-admin/10 py-2 text-center text-xs font-bold uppercase tracking-wide text-admin">
-          Admin Mode
-        </div>
-        {demoMode ? (
-          <button
-            type="button"
-            onClick={exitDemo}
-            className="flex w-full items-center justify-center gap-2 rounded-lg border border-border py-2 text-sm text-text-muted hover:bg-gray-50"
-          >
-            <LogOut className="h-4 w-4" />
-            Exit Demo
-          </button>
-        ) : (
-          <Link
-            to="/"
-            className="flex w-full items-center justify-center gap-2 rounded-lg border border-border py-2 text-sm text-text-muted hover:bg-gray-50"
-          >
-            <LogOut className="h-4 w-4" />
-            Back to Public
-          </Link>
-        )}
+        <button
+          type="button"
+          onClick={handleLogout}
+          className="flex w-full items-center justify-center gap-2 rounded-lg border border-border py-2 text-sm text-text-muted hover:bg-gray-50"
+        >
+          <LogOut className="h-4 w-4" />
+          Log out
+        </button>
       </div>
     </aside>
   );
