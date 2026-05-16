@@ -1,17 +1,23 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { requireRole } from "./lib/session";
 
 export const list = query({
-  args: { limit: v.optional(v.number()) },
+  args: {
+    sessionToken: v.optional(v.string()),
+    limit: v.optional(v.number()),
+  },
   handler: async (ctx, args) => {
+    await requireRole(ctx, args.sessionToken, ["admin"]);
     const limit = Math.min(args.limit ?? 100, 100);
     return await ctx.db.query("subscriptions").order("desc").take(limit);
   },
 });
 
 export const stats = query({
-  args: {},
-  handler: async (ctx) => {
+  args: { sessionToken: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    await requireRole(ctx, args.sessionToken, ["admin"]);
     const subs = await ctx.db.query("subscriptions").take(500);
     const active = subs.filter((s) => s.status === "active");
     const pastDue = subs.filter((s) => s.status === "past_due");
@@ -35,6 +41,7 @@ export const stats = query({
 
 export const updateStatus = mutation({
   args: {
+    sessionToken: v.optional(v.string()),
     subscriptionId: v.id("subscriptions"),
     status: v.union(
       v.literal("active"),
@@ -44,6 +51,7 @@ export const updateStatus = mutation({
     ),
   },
   handler: async (ctx, args) => {
+    await requireRole(ctx, args.sessionToken, ["admin"]);
     const sub = await ctx.db.get("subscriptions", args.subscriptionId);
     if (!sub) {
       throw new Error("Subscription not found");

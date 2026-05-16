@@ -5,18 +5,20 @@ import { api } from '../../../../convex/_generated/api';
 import type { Id } from '../../../../convex/_generated/dataModel';
 import { MetricCard } from '../../components/MetricCard';
 import { toSubscription } from '../../utils/mapDoc';
+import { getSessionToken } from '../../utils/sessionToken';
 
 export function AdminSubscriptions() {
-  const subscriptions = useQuery(api.subscriptions.list, {});
-  const stats = useQuery(api.subscriptions.stats);
+  const sessionToken = getSessionToken() ?? undefined;
+  const subscriptions = useQuery(api.subscriptions.list, { sessionToken });
+  const stats = useQuery(api.subscriptions.stats, { sessionToken });
   const updateStatus = useMutation(api.subscriptions.updateStatus);
 
   const handleCancel = async (id: Id<'subscriptions'>) => {
-    await updateStatus({ subscriptionId: id, status: 'cancelled' });
+    await updateStatus({ sessionToken, subscriptionId: id, status: 'cancelled' });
   };
 
   const handleRetry = async (id: Id<'subscriptions'>) => {
-    await updateStatus({ subscriptionId: id, status: 'active' });
+    await updateStatus({ sessionToken, subscriptionId: id, status: 'active' });
   };
 
   return (

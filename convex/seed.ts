@@ -299,6 +299,45 @@ export const demoData = mutation({
       ],
     });
 
+    await ctx.db.insert("announcements", {
+      title: "Critical Security Update",
+      message:
+        "We have patched a vulnerability affecting report submissions. No action required.",
+      recipients: "all",
+      recipientCount: users.length,
+      sentAt: new Date(now - 86400000 * 2).toISOString(),
+    });
+
+    await ctx.db.insert("announcements", {
+      title: "New Analyst Features",
+      message: "Geo intelligence map and campaign exports are now available in your dashboard.",
+      recipients: "analysts",
+      recipientCount: users.filter((u) => u.role === "analyst").length,
+      sentAt: new Date(now - 86400000 * 7).toISOString(),
+    });
+
+    const subscriberEmails = [
+      "user@mail.com",
+      "analyst@example.com",
+      "pro@security.io",
+    ];
+    for (const email of subscriberEmails) {
+      await ctx.db.insert("newsletterSubscribers", {
+        email,
+        subscribedAt: new Date(now - 86400000 * 30).toISOString(),
+        isActive: true,
+      });
+    }
+
+    await ctx.db.insert("newsletters", {
+      subject: "Weekly Threat Digest — Colombo Region",
+      content: "Top phishing patterns and OTP scams reported this week in Western Province.",
+      sentAt: new Date(now - 86400000 * 7).toISOString(),
+      subscriberCount: subscriberEmails.length,
+      openRate: 42,
+      clickRate: 8,
+    });
+
     return { seeded: true, message: "Demo data inserted" };
   },
 });

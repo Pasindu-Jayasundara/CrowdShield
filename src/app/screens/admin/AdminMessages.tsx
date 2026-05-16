@@ -5,9 +5,11 @@ import { api } from '../../../../convex/_generated/api';
 import type { Id } from '../../../../convex/_generated/dataModel';
 import { toSupportMessage } from '../../utils/mapDoc';
 import type { SupportMessage } from '../../types';
+import { getSessionToken } from '../../utils/sessionToken';
 
 export function AdminMessages() {
-  const messages = useQuery(api.supportMessages.list, {});
+  const sessionToken = getSessionToken() ?? undefined;
+  const messages = useQuery(api.supportMessages.list, { sessionToken });
   const reply = useMutation(api.supportMessages.reply);
   const updateStatus = useMutation(api.supportMessages.updateStatus);
 
@@ -24,6 +26,7 @@ export function AdminMessages() {
   const sendReply = async () => {
     if (!replyText.trim() || !selected) return;
     await reply({
+      sessionToken,
       messageId: selected.id as Id<'supportMessages'>,
       text: replyText,
       isAdmin: true,
@@ -34,6 +37,7 @@ export function AdminMessages() {
   const markClosed = async () => {
     if (!selected) return;
     await updateStatus({
+      sessionToken,
       messageId: selected.id as Id<'supportMessages'>,
       status: 'closed',
     });

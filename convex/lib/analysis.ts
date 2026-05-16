@@ -1,7 +1,9 @@
 export type Severity = "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
 
 export type AnalysisResult = {
+  /** Same as model `confidence` (0–100). */
   threatScore: number;
+  confidence: number;
   severity: Severity;
   scamType: string;
   reasoning: string;
@@ -15,6 +17,14 @@ type AzureAnalysisPayload = {
   aiScore?: string | number;
   confidence?: string | number;
 };
+
+const SYSTEM_INSTRUCTION = `You are a scam detection AI. Analyze the user message and respond strictly with a JSON object containing keys: 'scamType' (e.g., safe, phishing, job_scam, investment_crypto, romance_scam), 'severity' (LOW, MEDIUM, HIGH, CRITICAL), 'aiScore' ('1' for scam, '0' for safe), and 'confidence' (0-100 percentage). Do not include markdown formatting or backticks around the JSON.`;
+
+const DEFAULT_ENDPOINT =
+  "https://crowedshield.services.ai.azure.com/api/projects/crowedshield/openai/v1/responses";
+
+const DEFAULT_MODEL =
+  "gpt-4o-2026-08-06.ft-67a5f33f01e745c8946e4ed8740cdb3a-spam-img";
 
 const SAFE_SCAM_TYPES = new Set(["safe", "legitimate", "benign", "not_scam", "not scam"]);
 
@@ -58,17 +68,61 @@ function parseConfidence(value: string | number | undefined): number {
   return Math.min(100, Math.max(0, Math.round(n)));
 }
 
-/** Extract JSON object from model text (handles markdown fences). */
+function isScamPayload(obj: AzureAnalysisPayload): boolean {
+  return (
+    obj.scamType !== undefined ||
+    obj.aiScore !== undefined ||
+    obj.severity !== undefined
+  );
+}
+
+/** Extract the scam-classification JSON object from model text. */
 export function parseAzureJson(text: string): AzureAnalysisPayload {
   const trimmed = text.trim();
   const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i);
   const candidate = fenced?.[1]?.trim() ?? trimmed;
-  const start = candidate.indexOf("{");
-  const end = candidate.lastIndexOf("}");
-  if (start === -1 || end === -1) {
+
+  const objects: AzureAnalysisPayload[] = [];
+  let depth = 0;
+  let start = -1;
+
+  for (let i = 0; i < candidate.length; i++) {
+    if (candidate[i] === "{") {
+      if (depth === 0) start = i;
+      depth++;
+    } else if (candidate[i] === "}") {
+      depth--;
+      if (depth === 0 && start !== -1) {
+        try {
+          const obj = JSON.parse(candidate.slice(start, i + 1)) as AzureAnalysisPayload;
+          if (isScamPayload(obj)) objects.push(obj);
+        } catch {
+          // skip malformed fragment
+        }
+        start = -1;
+      }
+    }
+  }
+
+  if (objects.length > 0) {
+    return objects.reduce((best, current) => {
+      const bestConf = parseConfidence(best.confidence);
+      const currentConf = parseConfidence(current.confidence);
+      const bestHasScam = best.scamType !== undefined && best.aiScore !== undefined;
+      const currentHasScam =
+        current.scamType !== undefined && current.aiScore !== undefined;
+      if (currentHasScam && !bestHasScam) return current;
+      if (bestHasScam && !currentHasScam) return best;
+      return currentConf >= bestConf ? current : best;
+    });
+  }
+
+  const jsonStart = candidate.indexOf("{");
+  const jsonEnd = candidate.lastIndexOf("}");
+  if (jsonStart === -1 || jsonEnd === -1) {
     throw new Error("No JSON object in model response");
   }
-  return JSON.parse(candidate.slice(start, end + 1)) as AzureAnalysisPayload;
+  return JSON.parse(candidate.slice(jsonStart, jsonEnd + 1)) as AzureAnalysisPayload;
 }
 
 /** Map Azure Foundry fields to UI-facing analysis. */
@@ -77,10 +131,10 @@ export function mapAzureAnalysis(payload: AzureAnalysisPayload): AnalysisResult 
   const scam = isScamClassification(payload);
 
   if (!scam) {
-    // aiScore 0 + high confidence => confident the message is SAFE (low threat, not high score)
     const threatScore = Math.max(0, Math.min(15, 100 - confidence));
     return {
       threatScore,
+      confidence,
       severity: "LOW",
       scamType: "Safe",
       reasoning:
@@ -96,15 +150,17 @@ export function mapAzureAnalysis(payload: AzureAnalysisPayload): AnalysisResult 
     };
   }
 
+  // Threat score mirrors model confidence exactly (no severity-based caps).
   const threatScore = confidence > 0 ? confidence : 70;
   const severity = normalizeSeverity(payload.severity, threatScore);
   const scamType = formatScamType(payload.scamType);
 
   return {
     threatScore,
+    confidence: threatScore,
     severity,
     scamType,
-    reasoning: `AI flagged this as ${scamType} with ${confidence}% confidence.`,
+    reasoning: `AI flagged this as ${scamType} with ${threatScore}% confidence.`,
     attackPatterns: [scamType, "Suspicious intent"],
     recommendations: [
       "Do not click any links in the message",
@@ -114,70 +170,104 @@ export function mapAzureAnalysis(payload: AzureAnalysisPayload): AnalysisResult 
   };
 }
 
-const DEFAULT_ENDPOINT =
-  "https://crowedshield.services.ai.azure.com/openai/deployments/gpt-4o-2026-08-06.ft-67a5f33f01e745c8946e4ed8740cdb3a-spam-img/chat/completions?api-version=2024-02-15-preview";
+/** Calls Azure Foundry v1 Responses API (instructions + user input). */
+export async function createAzureResponse(
+  config: { apiKey: string; endpoint: string; model: string },
+  userContent: string,
+): Promise<unknown> {
+  const response = await fetch(config.endpoint, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${config.apiKey}`,
+    },
+    body: JSON.stringify({
+      model: config.model,
+      instructions: SYSTEM_INSTRUCTION,
+      temperature: 0,
+      input: [
+        {
+          type: "message",
+          role: "user",
+          content: [{ type: "input_text", text: userContent }],
+        },
+      ],
+    }),
+  });
+
+  if (!response.ok) {
+    const body = await response.text();
+    throw new Error(`Azure AI API error: ${response.status} ${response.statusText} — ${body}`);
+  }
+
+  return await response.json();
+}
+
+function extractResponseText(data: unknown): string {
+  if (!data || typeof data !== "object") {
+    throw new Error("Invalid model response");
+  }
+
+  const obj = data as Record<string, unknown>;
+
+  if (Array.isArray(obj.output)) {
+    for (const item of obj.output) {
+      if (!item || typeof item !== "object") continue;
+      const message = item as { type?: string; content?: unknown[] };
+      if (message.type !== "message" || !Array.isArray(message.content)) continue;
+      for (const part of message.content) {
+        if (!part || typeof part !== "object") continue;
+        const block = part as { type?: string; text?: string };
+        if (block.type === "output_text" && typeof block.text === "string") {
+          return block.text;
+        }
+      }
+    }
+  }
+
+  const choices = obj.choices as Array<{ message?: { content?: string } }> | undefined;
+  const legacy = choices?.[0]?.message?.content;
+  if (typeof legacy === "string") return legacy;
+
+  if (typeof obj.output_text === "string") return obj.output_text;
+
+  throw new Error("Could not extract text from model response");
+}
 
 export async function analyzeContent(
   content: string,
-  config: { apiKey?: string; endpoint?: string } = {},
+  config: { apiKey?: string; endpoint?: string; model?: string } = {},
 ): Promise<AnalysisResult> {
   const apiKey = config.apiKey;
   const endpoint = config.endpoint ?? DEFAULT_ENDPOINT;
+  const model = config.model ?? DEFAULT_MODEL;
 
   if (!apiKey) {
     console.error("AZURE_OPENAI_API_KEY is not set");
     return {
       threatScore: 0,
+      confidence: 0,
       severity: "LOW",
       scamType: "Unknown",
-      reasoning: "AI analysis is not configured. Set AZURE_OPENAI_API_KEY in Convex environment variables.",
+      reasoning:
+        "AI analysis is not configured. Set AZURE_OPENAI_API_KEY in Convex environment variables.",
       attackPatterns: [],
       recommendations: ["Contact an administrator to enable AI analysis"],
     };
   }
 
-  const systemPrompt = `You are a scam detection AI. Analyze the user message and respond with ONLY a JSON object (no markdown) using these keys:
-- scamType: one of safe, phishing, job_scam, investment_crypto, romance_scam, smishing, lottery_scam, or similar
-- severity: LOW, MEDIUM, HIGH, or CRITICAL (use LOW for safe/benign messages)
-- aiScore: "0" if the message is safe/legitimate, "1" if it is a scam or phishing attempt
-- confidence: integer 0-100 representing how confident you are in the aiScore classification
-
-Important: Legitimate social messages, event invites, and benign Spotify/music links from known campaigns are usually safe (aiScore "0", severity LOW). Only mark aiScore "1" when there are real scam indicators (credential theft, payment demands, impersonation, urgency to pay, etc.).`;
-
   try {
-    const response = await fetch(endpoint, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "api-key": apiKey,
-      },
-      body: JSON.stringify({
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content },
-        ],
-        temperature: 0,
-        response_format: { type: "json_object" },
-      }),
-    });
-
-    if (!response.ok) {
-      const body = await response.text();
-      throw new Error(`Azure AI API error: ${response.status} ${response.statusText} — ${body}`);
-    }
-
-    const data = await response.json();
-    const resultText = data.choices?.[0]?.message?.content;
-    if (!resultText || typeof resultText !== "string") {
-      throw new Error("Empty model response");
-    }
-
+    const data = await createAzureResponse({ apiKey, endpoint, model }, content);
+    const resultText = extractResponseText(data);
     const payload = parseAzureJson(resultText);
-    return mapAzureAnalysis(payload);
+    const result = mapAzureAnalysis(payload);
+    console.log("AI analysis payload:", payload, "→", result);
+    return result;
   } catch (error) {
     console.error("AI Analysis failed:", error);
     return {
       threatScore: 0,
+      confidence: 0,
       severity: "LOW",
       scamType: "Unknown",
       reasoning: "AI analysis is temporarily unavailable. Please try again.",
@@ -185,4 +275,22 @@ Important: Legitimate social messages, event invites, and benign Spotify/music l
       recommendations: ["Exercise caution until analysis completes"],
     };
   }
+}
+
+/** Build the text sent to the model (main content + optional context). */
+export function buildAnalysisInput(
+  content: string,
+  extras?: { context?: string; platform?: string; region?: string },
+): string {
+  const parts = [content.trim()];
+  if (extras?.context?.trim()) {
+    parts.push(`Additional context: ${extras.context.trim()}`);
+  }
+  if (extras?.platform) {
+    parts.push(`Platform: ${extras.platform}`);
+  }
+  if (extras?.region?.trim()) {
+    parts.push(`Region: ${extras.region.trim()}`);
+  }
+  return parts.join("\n\n");
 }

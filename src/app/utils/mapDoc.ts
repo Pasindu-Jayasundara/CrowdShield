@@ -1,5 +1,13 @@
 import type { Doc } from "../../../convex/_generated/dataModel";
-import type { AdminUser, Campaign, Report, Subscription, SupportMessage } from "../types";
+import type {
+  AdminUser,
+  Announcement,
+  Campaign,
+  NewsletterIssue,
+  Report,
+  Subscription,
+  SupportMessage,
+} from "../types";
 
 export function toReport(doc: Doc<"reports">): Report {
   const { _id, ...rest } = doc;
@@ -22,6 +30,16 @@ export function toSubscription(doc: Doc<"subscriptions">): Subscription {
 }
 
 export function toSupportMessage(doc: Doc<"supportMessages">): SupportMessage {
+  const { _id, ...rest } = doc;
+  return { ...rest, id: _id };
+}
+
+export function toAnnouncement(doc: Doc<"announcements">): Announcement {
+  const { _id, ...rest } = doc;
+  return { ...rest, id: _id };
+}
+
+export function toNewsletterIssue(doc: Doc<"newsletters">): NewsletterIssue {
   const { _id, ...rest } = doc;
   return { ...rest, id: _id };
 }

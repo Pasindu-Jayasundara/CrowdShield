@@ -95,4 +95,31 @@ export default defineSchema({
     voteType: v.union(v.literal("scam"), v.literal("suspicious"), v.literal("safe")),
     createdAt: v.string(),
   }).index("by_report_and_voter", ["reportId", "voterId"]),
+
+  announcements: defineTable({
+    title: v.string(),
+    message: v.string(),
+    recipients: v.union(
+      v.literal("all"),
+      v.literal("analysts"),
+      v.literal("free_users"),
+    ),
+    recipientCount: v.number(),
+    sentAt: v.string(),
+  }).index("by_sentAt", ["sentAt"]),
+
+  newsletters: defineTable({
+    subject: v.string(),
+    content: v.string(),
+    sentAt: v.string(),
+    subscriberCount: v.number(),
+    openRate: v.number(),
+    clickRate: v.number(),
+  }).index("by_sentAt", ["sentAt"]),
+
+  newsletterSubscribers: defineTable({
+    email: v.string(),
+    subscribedAt: v.string(),
+    isActive: v.boolean(),
+  }).index("by_email", ["email"]),
 });

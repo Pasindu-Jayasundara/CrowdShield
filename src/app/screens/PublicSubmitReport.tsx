@@ -30,7 +30,12 @@ export function PublicSubmitReport() {
     setResult(null);
     setSubmittedReportId(null);
     try {
-      const analysis = await analyze({ content });
+      const analysis = await analyze({
+        content,
+        context: context || undefined,
+        platform,
+        region: region || undefined,
+      });
       setResult(analysis);
     } catch (error) {
       console.error('AI analysis failed:', error);

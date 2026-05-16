@@ -1,23 +1,40 @@
+import { useMutation, useQuery } from 'convex/react';
 import { motion } from 'motion/react';
 import { useState } from 'react';
+import { api } from '../../../../convex/_generated/api';
+import { toAnnouncement } from '../../utils/mapDoc';
+import { formatRelativeTime } from '../../utils/formatDate';
+import { getSessionToken } from '../../utils/sessionToken';
 
 export function AdminAnnouncements() {
+  const sessionToken = getSessionToken() ?? undefined;
+  const counts = useQuery(api.announcements.recipientCounts, { sessionToken });
+  const recent = useQuery(api.announcements.list, { sessionToken });
+  const create = useMutation(api.announcements.create);
+
   const [title, setTitle] = useState('');
   const [message, setMessage] = useState('');
   const [recipients, setRecipients] = useState<'all' | 'analysts' | 'free_users'>('all');
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const counts = { all: 15293, analysts: 847, free_users: 14446 };
+  const recipientCounts = counts ?? { all: 0, analysts: 0, free_users: 0 };
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
     setSending(true);
-    await new Promise((r) => setTimeout(r, 2000));
-    setSending(false);
-    setSent(true);
-    setTitle('');
-    setMessage('');
+    setError(null);
+    try {
+      await create({ sessionToken, title, message, recipients });
+      setSent(true);
+      setTitle('');
+      setMessage('');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to send announcement');
+    } finally {
+      setSending(false);
+    }
   };
 
   return (
@@ -46,34 +63,41 @@ export function AdminAnnouncements() {
           onChange={(e) => setRecipients(e.target.value as typeof recipients)}
           className="rounded-lg border border-border bg-surface px-4 py-2"
         >
-          <option value="all">All Users ({counts.all.toLocaleString()})</option>
-          <option value="analysts">Analysts ({counts.analysts})</option>
-          <option value="free_users">Free Users ({counts.free_users.toLocaleString()})</option>
+          <option value="all">All Users ({recipientCounts.all.toLocaleString()})</option>
+          <option value="analysts">Analysts ({recipientCounts.analysts})</option>
+          <option value="free_users">Free Users ({recipientCounts.free_users.toLocaleString()})</option>
         </select>
         <button
           type="submit"
-          disabled={sending}
+          disabled={sending || counts === undefined}
           className="rounded-lg bg-admin px-6 py-2 font-semibold text-on-primary disabled:opacity-60"
         >
-          {sending ? 'Sending...' : `Send to ${counts[recipients].toLocaleString()} Users`}
+          {sending ? 'Sending...' : `Send to ${recipientCounts[recipients].toLocaleString()} Users`}
         </button>
-        {sent && <p className="text-accent">Announcement queued successfully!</p>}
+        {sent && <p className="text-accent">Announcement sent successfully!</p>}
+        {error && <p className="text-critical text-sm">{error}</p>}
       </form>
 
       <h2 className="mt-10 text-lg font-semibold">Recent Announcements</h2>
-      <div className="mt-4 space-y-3">
-        {[
-          { title: 'Critical Security Update', sent: '2 days ago', opened: '67%' },
-          { title: 'New Analyst Features', sent: '1 week ago', opened: '54%' },
-        ].map((a) => (
-          <div key={a.title} className="glass rounded-lg p-4">
-            <p className="font-medium">{a.title}</p>
-            <p className="text-xs text-text-dim">
-              {a.sent} · Open rate {a.opened}
-            </p>
-          </div>
-        ))}
-      </div>
+      <motion.div className="mt-4 space-y-3">
+        {recent === undefined && <p className="text-sm text-text-muted">Loading...</p>}
+        {recent?.length === 0 && (
+          <p className="text-sm text-text-muted">No announcements sent yet.</p>
+        )}
+        {recent?.map((doc) => {
+          const a = toAnnouncement(doc);
+          return (
+            <motion.div key={a.id} className="glass rounded-lg p-4">
+              <p className="font-medium">{a.title}</p>
+              <p className="mt-1 line-clamp-2 text-sm text-text-muted">{a.message}</p>
+              <p className="mt-1 text-xs text-text-dim">
+                {formatRelativeTime(a.sentAt)} · {a.recipientCount.toLocaleString()} recipients ·{' '}
+                {a.recipients.replace('_', ' ')}
+              </p>
+            </motion.div>
+          );
+        })}
+      </motion.div>
     </motion.div>
   );
 }

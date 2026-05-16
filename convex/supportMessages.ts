@@ -1,9 +1,14 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { requireRole } from "./lib/session";
 
 export const list = query({
-  args: { limit: v.optional(v.number()) },
+  args: {
+    sessionToken: v.optional(v.string()),
+    limit: v.optional(v.number()),
+  },
   handler: async (ctx, args) => {
+    await requireRole(ctx, args.sessionToken, ["admin"]);
     const limit = Math.min(args.limit ?? 50, 50);
     return await ctx.db.query("supportMessages").order("desc").take(limit);
   },
@@ -28,11 +33,15 @@ export const create = mutation({
 
 export const reply = mutation({
   args: {
+    sessionToken: v.optional(v.string()),
     messageId: v.id("supportMessages"),
     text: v.string(),
     isAdmin: v.boolean(),
   },
   handler: async (ctx, args) => {
+    if (args.isAdmin) {
+      await requireRole(ctx, args.sessionToken, ["admin"]);
+    }
     const msg = await ctx.db.get("supportMessages", args.messageId);
     if (!msg) {
       throw new Error("Message not found");
@@ -51,10 +60,12 @@ export const reply = mutation({
 
 export const updateStatus = mutation({
   args: {
+    sessionToken: v.optional(v.string()),
     messageId: v.id("supportMessages"),
     status: v.union(v.literal("new"), v.literal("replied"), v.literal("closed")),
   },
   handler: async (ctx, args) => {
+    await requireRole(ctx, args.sessionToken, ["admin"]);
     const msg = await ctx.db.get("supportMessages", args.messageId);
     if (!msg) {
       throw new Error("Message not found");
