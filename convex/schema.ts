@@ -4,7 +4,7 @@ import { authTables } from "@convex-dev/auth/server";
 
 export const SeverityType = v.union(v.literal('LOW'), v.literal('MEDIUM'), v.literal('HIGH'), v.literal('CRITICAL'));
 export const PlatformType = v.union(v.literal('whatsapp'), v.literal('sms'), v.literal('email'), v.literal('facebook'), v.literal('instagram'), v.literal('other'));
-export const StatusType = v.union(v.literal('pending'), v.literal('verified'), v.literal('removed'));
+export const StatusType = v.union(v.literal('pending'), v.literal('verified'), v.literal('rejected'), v.literal('removed'));
 export const UserRoleType = v.union(v.literal('public'), v.literal('analyst'), v.literal('admin'));
 
 export default defineSchema({
@@ -26,6 +26,7 @@ export default defineSchema({
     totalVotes: v.number(),
     createdAt: v.string(), // Consider using Convex's built-in `_creationTime` later
     status: StatusType,
+    imageStorageId: v.optional(v.string()), // For uploaded scam screenshots
   }),
 
   campaigns: defineTable({

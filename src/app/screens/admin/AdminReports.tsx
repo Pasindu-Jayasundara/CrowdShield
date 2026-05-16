@@ -6,7 +6,7 @@ import { api } from '../../../../convex/_generated/api';
 import { SeverityBadge } from '../../components/SeverityBadge';
 import type { Id } from '../../../../convex/_generated/dataModel';
 
-type Status = 'pending' | 'verified' | 'removed';
+type Status = 'pending' | 'verified' | 'rejected' | 'removed';
 
 export function AdminReports() {
   const reports = useQuery(api.reports.get);
@@ -18,7 +18,7 @@ export function AdminReports() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
   const filteredReports = reports?.filter(r =>
-    activeTab === 'all' ? r.status !== 'removed' : r.status === activeTab
+    activeTab === 'all' ? r.status !== 'removed' && r.status !== 'rejected' : r.status === activeTab
   );
 
   const handleStatusUpdate = async (id: Id<"reports">, status: Status) => {
@@ -63,7 +63,7 @@ export function AdminReports() {
 
       {/* Tabs */}
       <div className="flex gap-2 p-1 bg-white/5 rounded-xl w-fit mb-6 overflow-x-auto">
-        {(['all', 'pending', 'verified'] as const).map((tab) => (
+        {(['all', 'pending', 'verified', 'rejected'] as const).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -113,7 +113,7 @@ export function AdminReports() {
                   <div className="flex-1 min-w-[300px]">
                     <div className="flex items-center gap-3 mb-3">
                       <SeverityBadge severity={report.severity} />
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${report.status === 'verified' ? 'bg-accent/20 text-accent' : 'bg-white/10 text-text-muted'
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${report.status === 'verified' ? 'bg-accent/20 text-accent' : report.status === 'rejected' ? 'bg-critical/20 text-critical' : 'bg-white/10 text-text-muted'
                         }`}>
 
                         {report.status.replace('_', ' ')}
@@ -126,9 +126,16 @@ export function AdminReports() {
                     </div>
 
                     <h3 className="font-semibold text-lg mb-2">{report.scamType}</h3>
-                    <p className="text-text-muted text-sm line-clamp-3 mb-4 leading-relaxed">
-                      {report.content}
-                    </p>
+                    <div className="flex gap-4 items-start mb-4">
+                      <p className="text-text-muted text-sm leading-relaxed flex-1">
+                        {report.content}
+                      </p>
+                      {report.imageUrl && (
+                        <div className="w-32 h-32 rounded-xl overflow-hidden border border-white/10 shrink-0">
+                          <img src={report.imageUrl} alt="Scam" className="w-full h-full object-cover cursor-zoom-in" onClick={() => window.open(report.imageUrl as string, '_blank')} />
+                        </div>
+                      )}
+                    </div>
 
                     <div className="flex flex-wrap gap-4 items-center text-xs">
                       <div className="bg-white/5 rounded-lg px-3 py-2">
@@ -144,13 +151,22 @@ export function AdminReports() {
 
                   <div className="flex flex-col gap-2 shrink-0">
                     {report.status === 'pending' && (
-                      <button
-                        onClick={() => handleStatusUpdate(report._id, 'verified')}
-                        className="flex items-center justify-center gap-2 bg-accent/10 hover:bg-accent text-accent hover:text-white px-4 py-2 rounded-xl transition-all text-sm font-medium"
-                      >
-                        <Check className="h-4 w-4" />
-                        Verify
-                      </button>
+                      <div className="flex flex-col gap-2">
+                        <button
+                          onClick={() => handleStatusUpdate(report._id, 'verified')}
+                          className="flex items-center justify-center gap-2 bg-accent/10 hover:bg-accent text-accent hover:text-white px-4 py-2 rounded-xl transition-all text-sm font-medium"
+                        >
+                          <Check className="h-4 w-4" />
+                          Verify
+                        </button>
+                        <button
+                          onClick={() => handleStatusUpdate(report._id, 'rejected')}
+                          className="flex items-center justify-center gap-2 bg-critical/10 hover:bg-critical text-critical hover:text-white px-4 py-2 rounded-xl transition-all text-sm font-medium"
+                        >
+                          <X className="h-4 w-4" />
+                          Reject
+                        </button>
+                      </div>
                     )}
 
                     {report.status !== 'pending' && (

@@ -45,7 +45,19 @@ export function ReportCard({
               {timeAgo}
             </span>
           </div>
+
+          {report.imageUrl && (
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="mt-4 rounded-xl overflow-hidden border border-border"
+            >
+              <img src={report.imageUrl} alt="Scam Screenshot" className="w-full h-auto max-h-64 object-cover" />
+            </motion.div>
+          )}
+
           {showVotes && (
+
             <div className="mt-4 border-t border-border pt-4">
               <VoteButtons reportId={report.id} />
             </div>

@@ -5,9 +5,39 @@ import { PlatformType, SeverityType, StatusType } from "./schema";
 export const get = query({
   args: {},
   handler: async (ctx) => {
-    return await ctx.db.query("reports").order("desc").collect();
+    const reports = await ctx.db.query("reports").order("desc").collect();
+    return Promise.all(
+      reports.map(async (r) => ({
+        ...r,
+        imageUrl: r.imageStorageId ? await ctx.storage.getUrl(r.imageStorageId) : null,
+      }))
+    );
   },
 });
+
+export const getImageUrl = query({
+  args: { storageId: v.string() },
+  handler: async (ctx, args) => {
+    return await ctx.storage.getUrl(args.storageId);
+  },
+});
+
+export const generateUploadUrl = mutation(async (ctx) => {
+  return await ctx.storage.generateUploadUrl();
+});
+
+
+export const getByRegion = query({
+  args: { region: v.string() },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("reports")
+      .filter((q) => q.eq(q.field("region"), args.region))
+      .order("desc")
+      .collect();
+  },
+});
+
 
 
 export const createReport = mutation({
@@ -21,6 +51,7 @@ export const createReport = mutation({
     aiReasoning: v.string(),
     attackPatterns: v.array(v.string()),
     recommendations: v.array(v.string()),
+    imageStorageId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const newReportId = await ctx.db.insert("reports", {
@@ -35,6 +66,7 @@ export const createReport = mutation({
     return newReportId;
   },
 });
+
 
 export const updateStatus = mutation({
   args: {

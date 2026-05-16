@@ -19,8 +19,10 @@ export interface Report {
   votesSafe: number;
   totalVotes: number;
   createdAt: string;
-  status: 'pending' | 'verified' | 'false_positive' | 'removed';
+  status: 'pending' | 'verified' | 'rejected' | 'removed';
+  imageUrl?: string | null;
 }
+
 
 export interface Campaign {
   id: string;
