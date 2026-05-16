@@ -25,6 +25,8 @@ import { PublicFeed } from './screens/PublicFeed';
 import { PublicLanding } from './screens/PublicLanding';
 import { PublicSubmitReport } from './screens/PublicSubmitReport';
 import { SubmitReport } from './screens/SubmitReport';
+import SignInPage from './screens/auth/SignInPage';
+import { AuthRedirect } from '../components/AuthRedirect';
 
 function PublicLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -70,22 +72,37 @@ function AppRoutes() {
       <Route path="/submit" element={<PublicLayout><PublicSubmitReport /></PublicLayout>} />
       <Route path="/near-me" element={<PublicLayout><MyLocationThreats /></PublicLayout>} />
       <Route path="/pricing" element={<PublicLayout><Pricing /></PublicLayout>} />
+      <Route path="/signin" element={<SignInPage />} />
 
-      <Route path="/analyst" element={<AnalystLayout><Dashboard /></AnalystLayout>} />
-      <Route path="/analyst/feed" element={<AnalystLayout><LiveFeed /></AnalystLayout>} />
-      <Route path="/analyst/geo" element={<AnalystLayout><GeoMap /></AnalystLayout>} />
-      <Route path="/analyst/campaigns" element={<AnalystLayout><Campaigns /></AnalystLayout>} />
-      <Route path="/analyst/analytics" element={<AnalystLayout><Analytics /></AnalystLayout>} />
-      <Route path="/analyst/alerts" element={<AnalystLayout><Alerts /></AnalystLayout>} />
-      <Route path="/analyst/submit" element={<AnalystLayout><SubmitReport /></AnalystLayout>} />
+      {/* Protected Analyst Routes */}
+      <Route path="/analyst/*" element={
+        <AuthRedirect mode="requireAuth">
+          <Routes>
+            <Route path="/" element={<AnalystLayout><Dashboard /></AnalystLayout>} />
+            <Route path="/feed" element={<AnalystLayout><LiveFeed /></AnalystLayout>} />
+            <Route path="/geo" element={<AnalystLayout><GeoMap /></AnalystLayout>} />
+            <Route path="/campaigns" element={<AnalystLayout><Campaigns /></AnalystLayout>} />
+            <Route path="/analytics" element={<AnalystLayout><Analytics /></AnalystLayout>} />
+            <Route path="/alerts" element={<AnalystLayout><Alerts /></AnalystLayout>} />
+            <Route path="/submit" element={<AnalystLayout><SubmitReport /></AnalystLayout>} />
+          </Routes>
+        </AuthRedirect>
+      } />
 
-      <Route path="/admin" element={<AdminLayout><AdminDashboard /></AdminLayout>} />
-      <Route path="/admin/users" element={<AdminLayout><AdminUsers /></AdminLayout>} />
-      <Route path="/admin/reports" element={<AdminLayout><AdminReports /></AdminLayout>} />
-      <Route path="/admin/subscriptions" element={<AdminLayout><AdminSubscriptions /></AdminLayout>} />
-      <Route path="/admin/messages" element={<AdminLayout><AdminMessages /></AdminLayout>} />
-      <Route path="/admin/announcements" element={<AdminLayout><AdminAnnouncements /></AdminLayout>} />
-      <Route path="/admin/newsletter" element={<AdminLayout><AdminNewsletter /></AdminLayout>} />
+      {/* Protected Admin Routes */}
+      <Route path="/admin/*" element={
+        <AuthRedirect mode="requireAuth">
+          <Routes>
+            <Route path="/" element={<AdminLayout><AdminDashboard /></AdminLayout>} />
+            <Route path="/users" element={<AdminLayout><AdminUsers /></AdminLayout>} />
+            <Route path="/reports" element={<AdminLayout><AdminReports /></AdminLayout>} />
+            <Route path="/subscriptions" element={<AdminLayout><AdminSubscriptions /></AdminLayout>} />
+            <Route path="/messages" element={<AdminLayout><AdminMessages /></AdminLayout>} />
+            <Route path="/announcements" element={<AdminLayout><AdminAnnouncements /></AdminLayout>} />
+            <Route path="/newsletter" element={<AdminLayout><AdminNewsletter /></AdminLayout>} />
+          </Routes>
+        </AuthRedirect>
+      } />
 
       <Route
         path="*"

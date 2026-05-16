@@ -12,6 +12,8 @@ import {
 } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
+import { useSignOut } from '../../hooks/useSignOut';
+import { useConvexAuth } from 'convex/react';
 
 const links = [
   { to: '/admin', label: 'Dashboard', icon: LayoutDashboard },
@@ -26,6 +28,8 @@ const links = [
 export function AdminSidebar() {
   const { pathname } = useLocation();
   const { demoMode, exitDemo } = useApp();
+  const { isAuthenticated } = useConvexAuth();
+  const { signOut, isSigningOut } = useSignOut();
 
   return (
     <aside className="flex w-64 shrink-0 flex-col border-r border-border bg-surface">
@@ -82,6 +86,17 @@ export function AdminSidebar() {
         <div className="rounded-lg bg-admin/10 py-2 text-center text-xs font-bold uppercase tracking-wide text-admin">
           Admin Mode
         </div>
+        {isAuthenticated && (
+          <button
+            type="button"
+            disabled={isSigningOut}
+            onClick={() => void signOut()}
+            className="flex w-full items-center justify-center gap-2 rounded-lg border border-border py-2 text-sm text-text-muted hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
+          >
+            <LogOut className="h-4 w-4" />
+            Sign Out
+          </button>
+        )}
         {demoMode ? (
           <button
             type="button"
