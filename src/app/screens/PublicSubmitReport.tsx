@@ -9,13 +9,21 @@ import { VoteButtons } from '../components/VoteButtons';
 import { mockAIAnalysis } from '../data/mockData';
 import type { AIAnalysisResult, Platform } from '../types';
 
+// Import Convex hooks and your API
+import { useMutation } from "convex/react";
+import { api } from "../../../convex/_generated/api"; 
+
 export function PublicSubmitReport() {
   const [content, setContent] = useState('');
   const [platform, setPlatform] = useState<Platform>('whatsapp');
   const [region, setRegion] = useState('');
   const [context, setContext] = useState('');
   const [loading, setLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false); // Track DB submission state
   const [result, setResult] = useState<AIAnalysisResult | null>(null);
+
+  // Initialize the Convex mutation
+  const createReport = useMutation(api.reports.create);
 
   const handleAnalyze = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,6 +33,40 @@ export function PublicSubmitReport() {
     const analysis = await mockAIAnalysis(content);
     setResult(analysis);
     setLoading(false);
+  };
+
+  // Handler to submit the analyzed report to Convex
+  const handleSubmitToDatabase = async () => {
+    if (!result || !content) return;
+
+    setIsSubmitting(true);
+    
+    try {
+      await createReport({
+        content: content,
+        platform: platform, // Use Real State
+        region: region || 'Global', // Fallback if region is empty
+        scamType: result.scamType,
+        severity: result.severity,
+        aiScore: result.threatScore, 
+        aiReasoning: result.reasoning,
+        attackPatterns: result.attackPatterns,
+        recommendations: result.recommendations,
+      });
+      alert("Report submitted successfully!");
+
+      // Reset form on success
+      setContent("");
+      setPlatform('whatsapp');
+      setRegion("");
+      setContext("");
+      setResult(null);
+    } catch (error) {
+      console.error("Failed to submit report:", error);
+      alert("Error submitting report.");
+    } finally{
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -124,10 +166,26 @@ export function PublicSubmitReport() {
               </li>
             ))}
           </ul>
-          <p className="mt-6 flex items-center gap-2 text-sm font-medium text-accent">
-            <Check className="h-4 w-4" />
-            Added to live feed
-          </p>
+          
+          {/* Replaced static 'Added to live feed' with functional submission button */}
+          <button
+            onClick={handleSubmitToDatabase}
+            disabled={isSubmitting}
+            className="mt-8 flex w-full items-center justify-center gap-2 rounded-xl btn-primary py-3.5 text-base font-semibold disabled:opacity-60 bg-accent hover:bg-accent/90 text-white"
+          >
+            {isSubmitting ? (
+              <>
+                <Loader2 className="h-5 w-5 animate-spin" />
+                Saving to Database...
+              </>
+            ) : (
+              <>
+                <Check className="h-5 w-5" />
+                Confirm & Submit to Crowdshield
+              </>
+            )}
+          </button>
+
           <div className="mt-4 border-t border-border pt-4">
             <VoteButtons reportId="new" />
           </div>
