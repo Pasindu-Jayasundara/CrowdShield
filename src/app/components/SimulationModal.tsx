@@ -56,8 +56,8 @@ export function SimulationModal({
             ) : (
               <form onSubmit={handleLaunch} className="space-y-4">
                 <p className="text-sm text-text-muted">
-                  Injects synthetic threat clusters on the geo map to model how a coordinated scam wave
-                  might spread from an origin region.
+                  Models a coordinated scam wave spreading from an origin region. Clusters appear in waves
+                  every ~12 seconds and persist while you navigate analyst tabs (stored for this session).
                 </p>
                 <div>
                   <label className="text-sm text-text-muted">Origin region</label>

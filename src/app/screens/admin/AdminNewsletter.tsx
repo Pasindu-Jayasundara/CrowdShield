@@ -73,7 +73,7 @@ export function AdminNewsletter() {
             />
             <p className="text-sm text-text-dim">
               {subscriberCount !== undefined
-                ? `${subscriberCount.toLocaleString()} active subscribers`
+                ? `${subscriberCount.toLocaleString()} active subscribers (emails via SendGrid when configured)`
                 : 'Loading subscribers...'}
             </p>
             <button
@@ -81,9 +81,12 @@ export function AdminNewsletter() {
               disabled={sending || subscriberCount === 0}
               className="rounded-lg bg-admin px-6 py-2 font-semibold text-on-primary disabled:opacity-60"
             >
-              {sending ? 'Sending...' : 'Send to Subscribers'}
+              {sending ? 'Queuing send...' : 'Send to Subscribers'}
             </button>
             {error && <p className="text-critical text-sm">{error}</p>}
+            <p className="text-xs text-text-dim">
+              Critical threat alerts are sent automatically to subscribers who opted in.
+            </p>
           </form>
         ) : (
           <div className="mt-6 space-y-4">
@@ -98,9 +101,9 @@ export function AdminNewsletter() {
                   <p className="font-medium">{n.subject}</p>
                   <p className="mt-1 line-clamp-2 text-sm text-text-muted">{n.content}</p>
                   <p className="mt-1 text-sm text-text-dim">
-                    Sent {formatRelativeTime(n.sentAt)} · {n.subscriberCount.toLocaleString()}{' '}
-                    subscribers
-                    {n.openRate > 0 && ` · Open ${n.openRate}% · Click ${n.clickRate}%`}
+                    Sent {formatRelativeTime(n.sentAt)} · {n.subscriberCount.toLocaleString()} subscribers
+                    {n.emailsSent != null && ` · ${n.emailsSent} emailed`}
+                    {n.emailsFailed != null && n.emailsFailed > 0 && ` · ${n.emailsFailed} failed`}
                   </p>
                 </motion.div>
               );

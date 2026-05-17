@@ -40,38 +40,73 @@ export function severityColor(severity: string): string {
   }
 }
 
-export function buildSimulationClusters(config: {
-  scamType: string;
-  intensity: 'low' | 'medium' | 'high';
-  originRegion: string;
-}): import('../types/geo').GeoCluster[] {
-  const origin = REGION_COORDS[config.originRegion] ?? REGION_COORDS.Colombo;
+import type { GeoCluster, SimulationConfig } from '../types/geo';
+import type { Severity } from '../types';
+
+/** Spread order: origin first, then remaining regions (deterministic). */
+export function getSimulationSpreadOrder(originRegion: string): string[] {
+  const origin = (REGION_OPTIONS as readonly string[]).includes(originRegion)
+    ? originRegion
+    : 'Colombo';
+  return [origin, ...REGION_OPTIONS.filter((r) => r !== origin)];
+}
+
+export function getMaxSimulationWaves(config: SimulationConfig): number {
+  const spread = getSimulationSpreadOrder(config.originRegion);
+  const byDuration = Math.min(
+    spread.length,
+    Math.max(2, Math.ceil(config.durationHours / 2)),
+  );
+  return Math.min(spread.length, byDuration);
+}
+
+function originSeverity(intensity: SimulationConfig['intensity']): Severity {
+  if (intensity === 'high') return 'CRITICAL';
+  if (intensity === 'medium') return 'HIGH';
+  return 'MEDIUM';
+}
+
+function spreadSeverity(origin: Severity, distanceFromOrigin: number): Severity {
+  if (distanceFromOrigin === 0) return origin;
+  const rank: Record<Severity, number> = { LOW: 1, MEDIUM: 2, HIGH: 3, CRITICAL: 4 };
+  const down: Severity[] = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
+  const idx = Math.max(0, rank[origin] - distanceFromOrigin);
+  return down[idx] ?? 'LOW';
+}
+
+/** Build synthetic clusters for waves 0..wave (inclusive) — simulates geographic spread over time. */
+export function buildSimulationClustersForWave(
+  config: SimulationConfig,
+  wave: number,
+): GeoCluster[] {
+  const order = getSimulationSpreadOrder(config.originRegion);
+  const maxWave = getMaxSimulationWaves(config);
+  const activeWave = Math.min(Math.max(0, wave), maxWave - 1);
+  const regions = order.slice(0, activeWave + 1);
+
   const baseCount =
-    config.intensity === 'high' ? 120 : config.intensity === 'medium' ? 65 : 28;
-  const severity =
-    config.intensity === 'high'
-      ? 'CRITICAL'
-      : config.intensity === 'medium'
-        ? 'HIGH'
-        : 'MEDIUM';
+    config.intensity === 'high' ? 140 : config.intensity === 'medium' ? 72 : 32;
+  const originSev = originSeverity(config.intensity);
 
-  const spreadRegions = [
-    config.originRegion,
-    ...REGION_OPTIONS.filter((r) => r !== config.originRegion).slice(0, 3),
-  ];
-
-  return spreadRegions.map((region, i) => {
-    const coords = REGION_COORDS[region] ?? origin;
-    const jitter = () => (Math.random() - 0.5) * 0.35;
+  return regions.map((region, i) => {
+    const coords = REGION_COORDS[region] ?? REGION_COORDS.Colombo;
+    const waveFactor = 1 + activeWave * 0.08;
+    const distanceFactor = 1 - i * 0.18;
+    const count = Math.max(8, Math.round(baseCount * waveFactor * distanceFactor));
     return {
       region,
-      lat: coords.lat + jitter(),
-      lng: coords.lng + jitter(),
-      count: Math.round(baseCount * (1 - i * 0.22)),
-      severity: i === 0 ? severity : severity === 'CRITICAL' ? 'HIGH' : 'MEDIUM',
+      lat: coords.lat + (i === 0 ? 0 : (Math.sin(i * 1.7) * 0.12)),
+      lng: coords.lng + (i === 0 ? 0 : (Math.cos(i * 2.1) * 0.12)),
+      count,
+      severity: spreadSeverity(originSev, i),
       topScamType: config.scamType,
       trend: 'Rising' as const,
       isSimulated: true,
     };
   });
+}
+
+/** @deprecated Use buildSimulationClustersForWave */
+export function buildSimulationClusters(config: SimulationConfig): GeoCluster[] {
+  return buildSimulationClustersForWave(config, getMaxSimulationWaves(config) - 1);
 }

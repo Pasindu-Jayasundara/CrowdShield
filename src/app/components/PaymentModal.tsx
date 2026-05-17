@@ -1,7 +1,9 @@
+import { useMutation } from 'convex/react';
 import { motion, AnimatePresence } from 'motion/react';
 import { CreditCard, X } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { api } from '../../../convex/_generated/api';
 import { useApp } from '../context/AppContext';
 
 export function PaymentModal({
@@ -17,20 +19,33 @@ export function PaymentModal({
 }) {
   const navigate = useNavigate();
   const { isAuthenticated } = useApp();
+  const checkout = useMutation(api.subscriptions.checkout);
+  const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handlePay = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!email.includes('@')) {
+      setError('Enter a valid email for your subscription.');
+      return;
+    }
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 1500));
-    setLoading(false);
-    setSuccess(true);
-    setTimeout(() => {
-      onClose();
-      setSuccess(false);
-      navigate(isAuthenticated ? '/analyst' : '/pricing');
-    }, 1500);
+    setError(null);
+    try {
+      await checkout({ email, plan, amount });
+      setSuccess(true);
+      setTimeout(() => {
+        onClose();
+        setSuccess(false);
+        navigate(isAuthenticated ? '/analyst' : '/pricing');
+      }, 1500);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Checkout failed');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -50,7 +65,7 @@ export function PaymentModal({
             exit={{ scale: 0.95, opacity: 0 }}
             onClick={(e) => e.stopPropagation()}
           >
-            <motion.div className="mb-4 flex items-center justify-between">
+            <div className="mb-4 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <CreditCard className="h-5 w-5 text-primary" />
                 <h2 className="text-lg font-bold">Complete Payment</h2>
@@ -58,32 +73,51 @@ export function PaymentModal({
               <button type="button" onClick={onClose} className="text-text-muted hover:text-text">
                 <X className="h-5 w-5" />
               </button>
-            </motion.div>
+            </div>
             <p className="mb-4 text-sm text-text-muted">
               {plan === 'monthly' ? 'Monthly Analyst Plan' : 'Annual Analyst Plan'} — ${amount}
             </p>
             {success ? (
-              <motion.p className="py-8 text-center text-accent" initial={{ scale: 0.8 }} animate={{ scale: 1 }}>
-                Payment successful! Welcome, Analyst.
-              </motion.p>
+              <p className="py-8 text-center text-accent">
+                Payment successful! Analyst subscription active for {email}.
+              </p>
             ) : (
               <form onSubmit={handlePay} className="space-y-4">
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Billing email"
+                  className="w-full rounded-lg border border-border bg-background px-4 py-2.5 text-sm"
+                  required
+                />
                 <input
                   placeholder="Card number"
                   className="w-full rounded-lg border border-border bg-background px-4 py-2.5 text-sm"
                   defaultValue="4242 4242 4242 4242"
                   required
                 />
-                <motion.div className="grid grid-cols-2 gap-3">
-                  <input placeholder="MM/YY" className="rounded-lg border border-border bg-background px-4 py-2.5 text-sm" defaultValue="12/28" required />
-                  <input placeholder="CVC" className="rounded-lg border border-border bg-background px-4 py-2.5 text-sm" defaultValue="123" required />
-                </motion.div>
+                <div className="grid grid-cols-2 gap-3">
+                  <input
+                    placeholder="MM/YY"
+                    className="rounded-lg border border-border bg-background px-4 py-2.5 text-sm"
+                    defaultValue="12/28"
+                    required
+                  />
+                  <input
+                    placeholder="CVC"
+                    className="rounded-lg border border-border bg-background px-4 py-2.5 text-sm"
+                    defaultValue="123"
+                    required
+                  />
+                </div>
                 <input
                   placeholder="Cardholder name"
                   className="w-full rounded-lg border border-border bg-background px-4 py-2.5 text-sm"
                   defaultValue="Demo User"
                   required
                 />
+                {error && <p className="text-sm text-critical">{error}</p>}
                 <button
                   type="submit"
                   disabled={loading}
@@ -99,3 +133,4 @@ export function PaymentModal({
     </AnimatePresence>
   );
 }
+

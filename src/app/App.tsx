@@ -5,6 +5,8 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 import { PublicNav } from './components/PublicNav';
 import { Sidebar } from './components/Sidebar';
 import { AppProvider, useApp } from './context/AppContext';
+import { SimulationProvider } from './context/SimulationContext';
+import { AnalystSimulationStrip } from './components/AnalystSimulationStrip';
 import { AdminAnnouncements } from './screens/admin/AdminAnnouncements';
 import { AdminDashboard } from './screens/admin/AdminDashboard';
 import { AdminMessages } from './screens/admin/AdminMessages';
@@ -37,13 +39,16 @@ function PublicLayout({ children }: { children: React.ReactNode }) {
 function AnalystLayout({ children }: { children: React.ReactNode }) {
   return (
     <ProtectedRoute allowedRoles={['analyst', 'admin']}>
-      <div className="flex min-h-screen flex-col bg-background lg:flex-row">
-        <Sidebar />
-        <div className="flex min-h-screen flex-1 flex-col">
-          <AnalystTopNav />
-          <main className="flex-1 overflow-y-auto p-4 lg:p-6">{children}</main>
+      <SimulationProvider>
+        <div className="flex min-h-screen flex-col bg-background lg:flex-row">
+          <Sidebar />
+          <div className="flex min-h-screen flex-1 flex-col">
+            <AnalystTopNav />
+            <AnalystSimulationStrip />
+            <main className="flex-1 overflow-y-auto p-4 lg:p-6">{children}</main>
+          </div>
         </div>
-      </div>
+      </SimulationProvider>
     </ProtectedRoute>
   );
 }

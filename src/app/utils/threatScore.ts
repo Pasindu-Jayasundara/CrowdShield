@@ -34,6 +34,18 @@ export function defaultTrendScore(): number {
   return 50;
 }
 
+/** Merges text- and image-model AI signals (max when both present). */
+export function combineModalAiScores(
+  textAiScore?: number | null,
+  imageAiScore?: number | null,
+): number {
+  const scores = [textAiScore, imageAiScore].filter(
+    (s): s is number => s != null && Number.isFinite(s),
+  );
+  if (scores.length === 0) return 0;
+  return Math.max(...scores.map((n) => Math.min(100, Math.max(0, n))));
+}
+
 /** 0–20 Low · 21–50 Medium · 51–80 High · 81–100 Critical */
 export function severityFromThreatScore(score: number): Severity {
   const s = Math.min(100, Math.max(0, Math.round(score)));

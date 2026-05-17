@@ -1,3 +1,4 @@
+import { internal } from "./_generated/api";
 import { mutation, query } from "./_generated/server";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { v } from "convex/values";
@@ -66,12 +67,23 @@ export const create = mutation({
   handler: async (ctx, args) => {
     await requireRole(ctx, args.sessionToken, ["admin"]);
     const recipientCount = await countRecipients(ctx, args.recipients);
-    return await ctx.db.insert("announcements", {
+    const announcementId = await ctx.db.insert("announcements", {
       title: args.title.trim(),
       message: args.message.trim(),
       recipients: args.recipients,
       recipientCount,
+      emailsSent: 0,
+      emailsFailed: 0,
       sentAt: new Date().toISOString(),
     });
+
+    await ctx.scheduler.runAfter(0, internal.email.sendAnnouncementBatch, {
+      announcementId,
+      title: args.title.trim(),
+      message: args.message.trim(),
+      recipients: args.recipients,
+    });
+
+    return announcementId;
   },
 });

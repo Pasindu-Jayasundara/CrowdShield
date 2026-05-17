@@ -1,3 +1,4 @@
+import { internal } from "./_generated/api";
 import { mutation, query } from "./_generated/server";
 import type { Doc } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
@@ -44,12 +45,12 @@ export const list = query({
     if (args.severity) {
       const reports = await ctx.db
         .query("reports")
-        .withIndex("by_severity", (q) => q.eq("severity", args.severity!))
+        .withIndex("by_createdAt")
         .order("desc")
         .take(limit);
-      return filterReports(reports, args.regions, args.status).map((r) =>
-        enrichReport(r, campaigns, allReports),
-      );
+      return filterReports(reports, args.regions, args.status)
+        .map((r) => enrichReport(r, campaigns, allReports))
+        .filter((r) => r.severity === args.severity);
     }
 
     if (args.status) {
@@ -142,13 +143,25 @@ export const create = mutation({
       { scamType: args.scamType, region: args.region, createdAt },
     ]);
 
-    return await ctx.db.insert("reports", {
+    const reportId = await ctx.db.insert("reports", {
       ...draft,
       communityScore: scores.communityScore,
       trendScore: scores.trendScore,
       threatScore: scores.threatScore,
       severity: scores.severity,
     });
+
+    if (scores.severity === "CRITICAL") {
+      await ctx.scheduler.runAfter(0, internal.email.sendCriticalThreatAlert, {
+        reportId,
+        scamType: args.scamType,
+        region: args.region,
+        threatScore: scores.threatScore,
+        contentPreview: args.content.slice(0, 400),
+      });
+    }
+
+    return reportId;
   },
 });
 

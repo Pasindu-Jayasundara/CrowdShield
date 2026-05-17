@@ -2,12 +2,11 @@ import { useQuery } from 'convex/react';
 import { Layers, Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { api } from '../../../convex/_generated/api';
-import { SimulationBanner } from '../components/SimulationBanner';
 import { SimulationModal } from '../components/SimulationModal';
 import { SeverityBadge } from '../components/SeverityBadge';
 import { ThreatMap } from '../components/ThreatMap';
-import { buildSimulationClusters } from '../data/sriLankaRegions';
-import type { GeoCluster, SimulationConfig } from '../types/geo';
+import { useSimulation } from '../context/SimulationContext';
+import type { GeoCluster } from '../types/geo';
 import type { Severity } from '../types';
 
 const TIME_RANGES = [
@@ -21,9 +20,10 @@ export function GeoMap() {
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<GeoCluster | null>(null);
   const [simOpen, setSimOpen] = useState(false);
-  const [simulation, setSimulation] = useState<SimulationConfig | null>(null);
-  const [simulatedClusters, setSimulatedClusters] = useState<GeoCluster[]>([]);
   const [layers, setLayers] = useState({ heatmap: true, clusters: true, campaigns: true });
+
+  const { clusters: simulatedClusters, launchSimulation, isActive, currentWave, maxWaves } =
+    useSimulation();
 
   const mapData = useQuery(api.geo.mapData, { timeRangeHours });
 
@@ -54,21 +54,14 @@ export function GeoMap() {
     return liveClusters.filter((c) => c.region.toLowerCase().includes(q));
   }, [liveClusters, search]);
 
-  const handleLaunchSimulation = (config: SimulationConfig) => {
-    setSimulation(config);
-    setSimulatedClusters(buildSimulationClusters(config));
+  const handleLaunchSimulation = (config: Parameters<typeof launchSimulation>[0]) => {
+    launchSimulation(config);
     setSelected(null);
-  };
-
-  const endSimulation = () => {
-    setSimulation(null);
-    setSimulatedClusters([]);
+    setSimOpen(false);
   };
 
   return (
     <div className="flex h-[calc(100vh-3.5rem)] flex-col lg:h-[calc(100vh-0px)]">
-      {simulation && <SimulationBanner onEnd={endSimulation} config={simulation} />}
-
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-4">
         <div>
           <h1 className="text-xl font-bold">Geo Intelligence Map</h1>
@@ -76,6 +69,11 @@ export function GeoMap() {
             {mapData === undefined
               ? 'Loading threat geography…'
               : `${mapData.totalReports} reports · ${filteredClusters.length} regions`}
+            {isActive && (
+              <span className="ml-2 text-primary">
+                · Simulation wave {currentWave + 1}/{maxWaves}
+              </span>
+            )}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
@@ -104,7 +102,7 @@ export function GeoMap() {
             onClick={() => setSimOpen(true)}
             className="rounded-lg bg-primary px-4 py-1.5 text-sm font-medium text-on-primary"
           >
-            Launch Simulation
+            {isActive ? 'Adjust Simulation' : 'Launch Simulation'}
           </button>
         </div>
       </div>
@@ -130,6 +128,11 @@ export function GeoMap() {
             <p className="text-xs text-text-dim">Severity scale</p>
             <div className="mt-1 h-2 w-full rounded-full bg-gradient-to-r from-low via-medium to-critical" />
           </div>
+          {isActive && (
+            <p className="mt-2 text-xs text-primary">
+              Purple outline = simulated spread (wave {currentWave + 1})
+            </p>
+          )}
         </div>
 
         <div className="relative min-h-[400px] flex-1 bg-gray-100">
