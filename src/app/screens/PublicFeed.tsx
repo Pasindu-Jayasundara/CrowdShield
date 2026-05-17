@@ -1,13 +1,20 @@
+import { useQuery } from 'convex/react';
 import { Filter } from 'lucide-react';
 import { useState } from 'react';
+import { api } from '../../../convex/_generated/api';
 import { PageHeader } from '../components/PageHeader';
 import { ReportCard } from '../components/ReportCard';
-import { mockReports } from '../data/mockData';
+import { toReport } from '../utils/mapDoc';
 import type { Severity } from '../types';
 
 export function PublicFeed() {
   const [filter, setFilter] = useState<Severity | 'all'>('all');
-  const filtered = filter === 'all' ? mockReports : mockReports.filter((r) => r.severity === filter);
+  const reports = useQuery(
+    api.reports.list,
+    filter === 'all' ? {} : { severity: filter },
+  );
+
+  const mapped = reports?.map(toReport) ?? [];
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6">
@@ -48,7 +55,13 @@ export function PublicFeed() {
       </div>
 
       <div className="space-y-4">
-        {filtered.map((r) => (
+        {reports === undefined && (
+          <p className="text-sm text-text-muted">Loading feed...</p>
+        )}
+        {mapped.length === 0 && reports !== undefined && (
+          <p className="text-sm text-text-muted">No reports match this filter.</p>
+        )}
+        {mapped.map((r) => (
           <ReportCard key={r.id} report={r} monospace />
         ))}
       </div>
@@ -57,16 +70,20 @@ export function PublicFeed() {
         <h3 className="font-bold">Your Contribution</h3>
         <div className="mt-4 grid grid-cols-3 gap-4 text-center">
           <div>
-            <p className="text-2xl font-bold">0</p>
-            <p className="text-xs text-text-muted">Reports Voted On</p>
+            <p className="text-2xl font-bold">{mapped.reduce((s, r) => s + r.totalVotes, 0)}</p>
+            <p className="text-xs text-text-muted">Community Votes</p>
           </div>
           <div>
-            <p className="text-2xl font-bold text-accent">0</p>
-            <p className="text-xs text-text-muted">Community Impact</p>
+            <p className="text-2xl font-bold text-accent">{mapped.length}</p>
+            <p className="text-xs text-text-muted">Reports in Feed</p>
           </div>
           <div>
-            <p className="text-2xl font-bold text-low">94%</p>
-            <p className="text-xs text-text-muted">Accuracy</p>
+            <p className="text-2xl font-bold text-low">
+              {mapped.length > 0
+                ? `${Math.round((mapped.filter((r) => r.status === 'verified').length / mapped.length) * 100)}%`
+                : '—'}
+            </p>
+            <p className="text-xs text-text-muted">Verified</p>
           </div>
         </div>
       </div>

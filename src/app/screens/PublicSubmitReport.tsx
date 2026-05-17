@@ -1,12 +1,13 @@
+import { useAction, useMutation } from 'convex/react';
 import { motion } from 'motion/react';
 import { Brain, Check, Loader2, Upload } from 'lucide-react';
 import { useState } from 'react';
+import { api } from '../../../convex/_generated/api';
 import { AiScoreRing } from '../components/AiScoreRing';
 import { PlatformSelector } from '../components/PlatformSelector';
 import { ScamTypeTag } from '../components/ScamTypeTag';
 import { SeverityBadge } from '../components/SeverityBadge';
 import { VoteButtons } from '../components/VoteButtons';
-import { mockAIAnalysis } from '../data/mockData';
 import type { AIAnalysisResult, Platform } from '../types';
 
 export function PublicSubmitReport() {
@@ -15,16 +16,60 @@ export function PublicSubmitReport() {
   const [region, setRegion] = useState('');
   const [context, setContext] = useState('');
   const [loading, setLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [result, setResult] = useState<AIAnalysisResult | null>(null);
+  const [submittedReportId, setSubmittedReportId] = useState<string | null>(null);
+
+  const analyze = useAction(api.ai.analyze);
+  const createReport = useMutation(api.reports.create);
 
   const handleAnalyze = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!content.trim()) return;
     setLoading(true);
     setResult(null);
-    const analysis = await mockAIAnalysis(content);
-    setResult(analysis);
-    setLoading(false);
+    setSubmittedReportId(null);
+    try {
+      const analysis = await analyze({
+        content,
+        context: context || undefined,
+        platform,
+        region: region || undefined,
+      });
+      setResult(analysis);
+    } catch (error) {
+      console.error('AI analysis failed:', error);
+      alert('Analysis failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSubmitToDatabase = async () => {
+    if (!result || !content) return;
+
+    setIsSubmitting(true);
+
+    try {
+      const reportId = await createReport({
+        content,
+        platform,
+        region: region || undefined,
+        scamType: result.scamType,
+        severity: result.severity,
+        aiScore: result.aiScore,
+        aiReasoning: result.reasoning,
+        attackPatterns: result.attackPatterns,
+        recommendations: result.recommendations,
+      });
+      setSubmittedReportId(reportId);
+      alert('Report submitted successfully!');
+    } catch (error) {
+      console.error('Failed to submit report:', error);
+      alert('Error submitting report.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -104,6 +149,10 @@ export function PublicSubmitReport() {
                 <ScamTypeTag type={result.scamType} />
               </div>
               <p className="mt-4 text-sm text-text-muted">{result.reasoning}</p>
+              <p className="mt-2 text-xs text-text-dim">
+                Score breakdown — AI: {result.aiScore} · Community: {result.communityScore} ·
+                Trend: {result.trendScore}
+              </p>
             </div>
           </motion.div>
           <motion.div className="mt-6">
@@ -124,12 +173,32 @@ export function PublicSubmitReport() {
               </li>
             ))}
           </ul>
-          <p className="mt-6 flex items-center gap-2 text-sm font-medium text-accent">
-            <Check className="h-4 w-4" />
-            Added to live feed
-          </p>
+
+          {!submittedReportId ? (
+            <button
+              type="button"
+              onClick={handleSubmitToDatabase}
+              disabled={isSubmitting}
+              className="mt-8 flex w-full items-center justify-center gap-2 rounded-xl bg-accent py-3.5 text-base font-semibold text-white hover:bg-accent/90 disabled:opacity-60"
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  Saving to Database...
+                </>
+              ) : (
+                <>
+                  <Check className="h-5 w-5" />
+                  Confirm & Submit to Crowdshield
+                </>
+              )}
+            </button>
+          ) : (
+            <p className="mt-8 text-center text-sm font-medium text-accent">Report saved to the live feed.</p>
+          )}
+
           <div className="mt-4 border-t border-border pt-4">
-            <VoteButtons reportId="new" />
+            <VoteButtons reportId={submittedReportId ?? 'new'} />
           </div>
         </motion.div>
       )}

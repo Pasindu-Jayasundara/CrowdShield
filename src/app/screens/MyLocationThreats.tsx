@@ -1,18 +1,44 @@
+import { useQuery } from 'convex/react';
 import { MapPin, Navigation, Shield, TrendingUp } from 'lucide-react';
 import { useState } from 'react';
+import { api } from '../../../convex/_generated/api';
 import { ReportCard } from '../components/ReportCard';
 import { SeverityBadge } from '../components/SeverityBadge';
-import { mockReports } from '../data/mockData';
+import { toReport } from '../utils/mapDoc';
+import type { Severity } from '../types';
+
+const DEFAULT_REGIONS = ['Colombo', 'Negombo'];
 
 export function MyLocationThreats() {
   const [locationEnabled, setLocationEnabled] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [regions, setRegions] = useState<string[]>(DEFAULT_REGIONS);
+
+  const localData = useQuery(
+    api.analytics.localThreats,
+    locationEnabled ? { regions } : 'skip',
+  );
 
   const enableLocation = async () => {
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 1000));
-    setLocationEnabled(true);
-    setLoading(false);
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        () => {
+          setRegions(DEFAULT_REGIONS);
+          setLocationEnabled(true);
+          setLoading(false);
+        },
+        () => {
+          setRegions(DEFAULT_REGIONS);
+          setLocationEnabled(true);
+          setLoading(false);
+        },
+      );
+    } else {
+      await new Promise((r) => setTimeout(r, 500));
+      setLocationEnabled(true);
+      setLoading(false);
+    }
   };
 
   if (!locationEnabled) {
@@ -39,7 +65,8 @@ export function MyLocationThreats() {
     );
   }
 
-  const localReports = mockReports.filter((r) => r.region === 'Colombo' || r.region === 'Negombo');
+  const localReports = localData?.reports.map(toReport) ?? [];
+  const threatLevel = (localData?.threatLevel ?? 'MEDIUM') as Severity;
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6">
@@ -48,22 +75,28 @@ export function MyLocationThreats() {
           <div>
             <p className="flex items-center gap-2 text-sm text-text-muted">
               <MapPin className="h-4 w-4" />
-              Colombo, Sri Lanka
+              {regions.join(', ')}, Sri Lanka
             </p>
             <h1 className="mt-2 text-2xl font-bold">Local Threat Level</h1>
           </div>
-          <SeverityBadge severity="HIGH" solid />
+          <SeverityBadge severity={threatLevel} solid />
         </div>
         <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
           {[
-            { label: 'Active Threats', value: '12' },
-            { label: '24h Increase', value: '+23%', highlight: true },
-            { label: 'Trend', value: 'Rising', icon: TrendingUp },
-            { label: 'Top Scam', value: 'Phishing' },
+            { label: 'Active Threats', value: localData ? String(localData.activeThreats) : '—' },
+            {
+              label: '24h Increase',
+              value: localData ? `+${localData.increasePct}%` : '—',
+              highlight: true,
+            },
+            { label: 'Trend', value: localData?.trend ?? '—', icon: TrendingUp },
+            { label: 'Top Scam', value: localData?.topScam ?? '—' },
           ].map(({ label, value, highlight, icon: Icon }) => (
             <div key={label} className="rounded-lg bg-gray-50 p-3 text-center sm:text-left">
               <p className="text-xs text-text-muted">{label}</p>
-              <p className={`mt-1 flex items-center justify-center gap-1 font-bold sm:justify-start ${highlight ? 'text-critical' : ''}`}>
+              <p
+                className={`mt-1 flex items-center justify-center gap-1 font-bold sm:justify-start ${highlight ? 'text-critical' : ''}`}
+              >
                 {Icon && <Icon className="h-4 w-4 text-critical" />}
                 {value}
               </p>
@@ -84,6 +117,12 @@ export function MyLocationThreats() {
       </div>
       <h2 className="mb-4 mt-8 text-lg font-semibold">Recent Local Reports</h2>
       <div className="space-y-4">
+        {localData === undefined && (
+          <p className="text-sm text-text-muted">Loading local threats...</p>
+        )}
+        {localReports.length === 0 && localData !== undefined && (
+          <p className="text-sm text-text-muted">No reports in your area yet.</p>
+        )}
         {localReports.map((r) => (
           <ReportCard key={r.id} report={r} monospace />
         ))}

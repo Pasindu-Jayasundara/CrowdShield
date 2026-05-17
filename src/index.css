@@ -71,4 +71,15 @@
   .plan-gradient {
     background: linear-gradient(180deg, #2d7dd2 0%, #00b894 100%);
   }
+
+  .leaflet-container {
+    height: 100%;
+    width: 100%;
+    font-family: inherit;
+  }
+
+  .threat-cluster-icon {
+    background: transparent !important;
+    border: none !important;
+  }
 }

@@ -51,10 +51,13 @@ export function ReportCard({
             </div>
           )}
         </div>
-        <div className="flex flex-col items-center">
-          <ThreatScoreMini score={report.aiScore} severity={report.severity} />
-          <span className="mt-1 text-[10px] text-text-dim">AI Score</span>
-        </div>
+        <motion.div className="flex shrink-0 flex-col items-center">
+          <ThreatScoreMini
+            score={report.threatScore ?? report.aiScore}
+            severity={report.severity}
+          />
+          <span className="mt-1 text-[10px] text-text-dim">Threat Score</span>
+        </motion.div>
       </div>
     </motion.article>
   );

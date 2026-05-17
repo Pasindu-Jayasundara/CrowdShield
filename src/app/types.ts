@@ -11,6 +11,9 @@ export interface Report {
   scamType: string;
   severity: Severity;
   aiScore: number;
+  communityScore?: number;
+  trendScore?: number;
+  threatScore?: number;
   aiReasoning: string;
   attackPatterns: string[];
   recommendations: string[];
@@ -37,7 +40,11 @@ export interface Campaign {
 }
 
 export interface AIAnalysisResult {
+  aiScore: number;
   threatScore: number;
+  confidence: number;
+  communityScore: number;
+  trendScore: number;
   severity: Severity;
   scamType: string;
   reasoning: string;
@@ -75,4 +82,23 @@ export interface Subscription {
   amount: number;
   status: 'active' | 'cancelled' | 'past_due' | 'expired';
   nextBilling: string;
+}
+
+export interface Announcement {
+  id: string;
+  title: string;
+  message: string;
+  recipients: 'all' | 'analysts' | 'free_users';
+  recipientCount: number;
+  sentAt: string;
+}
+
+export interface NewsletterIssue {
+  id: string;
+  subject: string;
+  content: string;
+  sentAt: string;
+  subscriberCount: number;
+  openRate: number;
+  clickRate: number;
 }

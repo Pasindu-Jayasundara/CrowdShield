@@ -16,7 +16,7 @@ export function PaymentModal({
   amount: number;
 }) {
   const navigate = useNavigate();
-  const { setRole } = useApp();
+  const { isAuthenticated } = useApp();
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
 
@@ -26,11 +26,10 @@ export function PaymentModal({
     await new Promise((r) => setTimeout(r, 1500));
     setLoading(false);
     setSuccess(true);
-    setRole('analyst');
     setTimeout(() => {
       onClose();
       setSuccess(false);
-      navigate('/analyst');
+      navigate(isAuthenticated ? '/analyst' : '/pricing');
     }, 1500);
   };
 

@@ -1,4 +1,4 @@
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   AlertTriangle,
   BarChart3,
@@ -24,7 +24,13 @@ const links = [
 
 export function Sidebar() {
   const { pathname } = useLocation();
-  const { demoMode, exitDemo } = useApp();
+  const navigate = useNavigate();
+  const { logout } = useApp();
+
+  const handleLogout = async () => {
+    await logout();
+    navigate('/');
+  };
 
   return (
     <aside className="hidden w-56 shrink-0 flex-col border-r border-border bg-surface lg:flex">
@@ -55,25 +61,14 @@ export function Sidebar() {
         })}
       </nav>
       <div className="border-t border-border p-3">
-        <div className="mb-2 flex items-center gap-2 rounded-lg border border-border bg-gray-50 px-3 py-2 text-xs text-text-muted">
-          <span className="h-2 w-2 rounded-full bg-critical" />
-          Simulation Mode
-        </div>
-        {demoMode ? (
-          <button
-            type="button"
-            onClick={exitDemo}
-            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-text-muted hover:bg-gray-50"
-          >
-            <LogOut className="h-4 w-4" />
-            Exit Demo
-          </button>
-        ) : (
-          <Link to="/" className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-text-muted hover:bg-gray-50">
-            <LogOut className="h-4 w-4" />
-            Back to Public
-          </Link>
-        )}
+        <button
+          type="button"
+          onClick={handleLogout}
+          className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-text-muted hover:bg-gray-50"
+        >
+          <LogOut className="h-4 w-4" />
+          Log out
+        </button>
       </div>
     </aside>
   );

@@ -1,18 +1,28 @@
+import { useMutation } from 'convex/react';
 import { motion } from 'motion/react';
 import { Mail } from 'lucide-react';
 import { useState } from 'react';
+import { api } from '../../../convex/_generated/api';
 
 export function NewsletterSignup() {
   const [email, setEmail] = useState('');
-  const [status, setStatus] = useState<'idle' | 'loading' | 'success'>('idle');
+  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [error, setError] = useState<string | null>(null);
+  const subscribe = useMutation(api.newsletter.subscribe);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.includes('@')) return;
     setStatus('loading');
-    await new Promise((r) => setTimeout(r, 800));
-    setStatus('success');
-    setEmail('');
+    setError(null);
+    try {
+      await subscribe({ email });
+      setStatus('success');
+      setEmail('');
+    } catch (err) {
+      setStatus('error');
+      setError(err instanceof Error ? err.message : 'Subscription failed');
+    }
   };
 
   return (
@@ -22,7 +32,7 @@ export function NewsletterSignup() {
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
     >
-      <div className="mx-auto max-w-xl text-center">
+      <motion.div className="mx-auto max-w-xl text-center">
         <Mail className="mx-auto mb-4 h-10 w-10 text-primary" />
         <h2 className="text-2xl font-bold">Weekly Threat Digest</h2>
         <p className="mt-2 text-text-muted">
@@ -55,7 +65,10 @@ export function NewsletterSignup() {
             </button>
           </form>
         )}
-      </div>
+        {status === 'error' && error && (
+          <p className="mt-3 text-sm text-critical">{error}</p>
+        )}
+      </motion.div>
     </motion.section>
   );
 }
