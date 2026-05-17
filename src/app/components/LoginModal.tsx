@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 const DEMO_ACCOUNTS = [
-  { label: 'Analyst', email: 'analyst@example.com', password: 'analyst123', role: 'analyst' as const },
+  { label: 'Analyst', email: 'pro@security.io', password: 'analyst123', role: 'analyst' as const },
   { label: 'Admin', email: 'admin@crowdshield.com', password: 'admin123', role: 'admin' as const },
 ];
 
@@ -20,7 +20,7 @@ export function LoginModal({
   const { login } = useApp();
   const navigate = useNavigate();
   const [email, setEmail] = useState(
-    defaultRole === 'admin' ? 'admin@crowdshield.com' : 'analyst@example.com',
+    defaultRole === 'admin' ? 'admin@crowdshield.com' : 'pro@security.io',
   );
   const [password, setPassword] = useState(
     defaultRole === 'admin' ? 'admin123' : 'analyst123',
