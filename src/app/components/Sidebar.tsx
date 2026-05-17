@@ -12,9 +12,10 @@ import {
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { useSignOut } from '../../hooks/useSignOut';
-import { useConvexAuth } from 'convex/react';
+import { useConvexAuth, useQuery } from 'convex/react';
+import { api } from '../../../convex/_generated/api';
 
-const links = [
+const analystLinks = [
   { to: '/analyst', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/analyst/feed', label: 'Live Feed', icon: Radio, live: true },
   { to: '/analyst/geo', label: 'Geo Map', icon: Globe },
@@ -24,11 +25,20 @@ const links = [
   { to: '/analyst/submit', label: 'Submit Report', icon: Upload },
 ];
 
+const publicLinks = [
+    { to: '/', label: 'Public Feed', icon: Radio },
+    { to: '/submit', label: 'Submit Report', icon: Upload },
+];
+
 export function Sidebar() {
   const { pathname } = useLocation();
   const { demoMode, exitDemo } = useApp();
   const { isAuthenticated } = useConvexAuth();
   const { signOut, isSigningOut } = useSignOut();
+  const viewer = useQuery(api.users.viewerRole);
+  const role = viewer?.role;
+
+  const links = role === 'analyst' ? analystLinks : publicLinks;
 
   return (
     <aside className="hidden w-56 shrink-0 flex-col border-r border-border bg-surface lg:flex">

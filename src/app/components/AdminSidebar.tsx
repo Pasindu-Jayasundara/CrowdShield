@@ -13,7 +13,8 @@ import {
 import { Link, useLocation } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { useSignOut } from '../../hooks/useSignOut';
-import { useConvexAuth } from 'convex/react';
+import { useConvexAuth, useQuery } from 'convex/react';
+import { api } from '../../../convex/_generated/api';
 
 const links = [
   { to: '/admin', label: 'Dashboard', icon: LayoutDashboard },
@@ -30,17 +31,22 @@ export function AdminSidebar() {
   const { demoMode, exitDemo } = useApp();
   const { isAuthenticated } = useConvexAuth();
   const { signOut, isSigningOut } = useSignOut();
+  const viewer = useQuery(api.users.viewerRole);
+
+  if (viewer?.role !== 'admin') {
+    return null;
+  }
 
   return (
     <aside className="flex w-64 shrink-0 flex-col border-r border-border bg-surface">
       <div className="border-b border-border p-4">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-admin text-sm font-bold text-on-primary">
-            A
+            {viewer.user?.name?.[0] ?? 'A'}
           </div>
           <div>
-            <p className="text-sm font-semibold text-text">Admin User</p>
-            <p className="text-xs text-text-muted">admin@crowdshield.com</p>
+            <p className="text-sm font-semibold text-text">{viewer.user?.name}</p>
+            <p className="text-xs text-text-muted">{viewer.user?.email}</p>
           </div>
         </div>
       </div>

@@ -24,11 +24,25 @@ export default defineSchema({
     emailVerificationTime: v.optional(v.number()),
     phone: v.optional(v.string()),
     phoneVerificationTime: v.optional(v.number()),
-    
+
     // Prototype specific fields (made optional so initial signup never errors out)
     username: v.optional(v.string()),
-    role: v.optional(UserRoleType), 
+    role: v.optional(UserRoleType),
     reportsSubmitted: v.optional(v.number()),
     isActive: v.optional(v.boolean()),
   }).index("email", ["email"]),
+  
+  subscriptions: defineTable({
+    userId: v.id("users"),
+    plan: v.string(),
+    status: v.string(),
+    expirationDate: v.optional(v.number()),
+  }).index("userId", ["userId"]),
+  
+  invitations: defineTable({
+    email: v.string(),
+    token: v.string(),
+    expiresAt: v.number(),
+    invitedBy: v.id("users"),
+  }).index("email", ["email"]).index("token", ["token"]),
 });

@@ -1,7 +1,7 @@
 import { BarChart3, Check, Crown, Globe, Shield, Target, Zap } from 'lucide-react';
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { PaymentModal } from '../components/PaymentModal';
+import { useNavigate } from 'react-router-dom';
+import { useMutation } from 'convex/react';
+import { api } from '../../../convex/_generated/api';
 import { useApp } from '../context/AppContext';
 
 const freeFeatures = ['Submit scam reports', 'AI threat analysis', 'Live community feed', 'Vote on reports', 'Location threats', 'Newsletter'];
@@ -15,15 +15,22 @@ const analystFeatures = [
 export function Pricing() {
   const navigate = useNavigate();
   const { enterAnalystDemo, enterAdminDemo } = useApp();
-  const [paymentOpen, setPaymentOpen] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState<{ plan: 'monthly' | 'annual'; amount: number }>({
-    plan: 'monthly',
-    amount: 49,
-  });
+  const createSubscription = useMutation(api.subscriptions.createSubscription);
+  const requestAnalystRole = useMutation(api.auth.requestAnalystRole);
 
-  const openPayment = (plan: 'monthly' | 'annual', amount: number) => {
-    setSelectedPlan({ plan, amount });
-    setPaymentOpen(true);
+  const handleSubscribe = async (plan: string) => {
+    try {
+      await createSubscription({
+        plan,
+        status: "active",
+      });
+      await requestAnalystRole();
+      alert(`Subscribed to ${plan} and role updated to analyst!`);
+      navigate("/dashboard");
+    } catch (error) {
+      console.error(error);
+      alert("Failed to subscribe.");
+    }
   };
 
   return (
@@ -68,6 +75,31 @@ export function Pricing() {
         </div>
       </div>
 
+      <div className="mt-12 grid gap-6 md:grid-cols-2">
+        <div className="card p-8">
+            <h3 className="text-lg font-bold">Monthly</h3>
+            <p className="text-3xl font-bold mt-2">$49/mo</p>
+            <button
+                type="button"
+                onClick={() => handleSubscribe("monthly")}
+                className="btn-primary mt-4 w-full"
+            >
+                Subscribe
+            </button>
+        </div>
+        <div className="card p-8">
+            <h3 className="text-lg font-bold">Annual</h3>
+            <p className="text-3xl font-bold mt-2">$499/yr</p>
+            <button
+                type="button"
+                onClick={() => handleSubscribe("annual")}
+                className="btn-primary mt-4 w-full"
+            >
+                Subscribe
+            </button>
+        </div>
+      </div>
+
       <div className="card mt-8 border-accent/30 bg-accent/5 p-8 text-center">
         <h3 className="text-lg font-bold">Try Before You Buy</h3>
         <p className="mt-2 text-sm text-text-muted">Explore full analyst and admin dashboards — no payment required</p>
@@ -96,56 +128,6 @@ export function Pricing() {
           </button>
         </div>
       </div>
-
-      <div className="mt-12 grid gap-6 md:grid-cols-2">
-        <div className="card p-8 text-center">
-          <h3 className="text-lg font-semibold text-text-muted">Monthly</h3>
-          <p className="mt-2 text-4xl font-bold">$49</p>
-          <p className="text-sm text-text-muted">/month · billed monthly</p>
-          <button type="button" onClick={() => openPayment('monthly', 49)} className="mt-6 w-full btn-primary rounded-xl py-3 font-semibold">
-            Start Monthly Plan
-          </button>
-        </div>
-
-        <div className="plan-gradient relative rounded-xl p-8 text-center text-on-primary shadow-lg">
-          <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-high px-3 py-0.5 text-xs font-bold text-text">
-            SAVE 40%
-          </span>
-          <h3 className="text-lg font-semibold opacity-90">Annual</h3>
-          <p className="mt-2 text-4xl font-bold">$29</p>
-          <p className="text-sm opacity-90">/month · billed $348 annually</p>
-          <button
-            type="button"
-            onClick={() => openPayment('annual', 348)}
-            className="mt-6 w-full rounded-xl bg-surface py-3 font-semibold text-primary"
-          >
-            Start Annual Plan
-          </button>
-        </div>
-      </div>
-
-      <div className="mt-16">
-        <h2 className="text-center text-xl font-bold">Frequently Asked Questions</h2>
-        <div className="mt-8 space-y-4">
-          {[
-            { q: 'Can I cancel anytime?', a: 'Yes. Monthly plans cancel at the end of the billing period.' },
-            { q: 'What is demo mode?', a: 'Try all analyst and admin screens without payment.' },
-          ].map((faq) => (
-            <div key={faq.q} className="card p-5">
-              <p className="font-semibold">{faq.q}</p>
-              <p className="mt-2 text-sm text-text-muted">{faq.a}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <p className="mt-12 text-center">
-        <Link to="/" className="text-sm text-text-muted hover:text-primary">
-          ← Back to Home
-        </Link>
-      </p>
-
-      <PaymentModal open={paymentOpen} onClose={() => setPaymentOpen(false)} plan={selectedPlan.plan} amount={selectedPlan.amount} />
     </div>
   );
 }

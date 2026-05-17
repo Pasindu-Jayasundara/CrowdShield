@@ -6,7 +6,12 @@ import {
 import { SIGN_IN_PATH, HOME_PATH } from "./lib/auth-routes";
 
 const isSignInPage = createRouteMatcher([SIGN_IN_PATH]);
-const isPublicPage = createRouteMatcher([SIGN_IN_PATH]);
+const isProtectedPage = createRouteMatcher([
+  "/admin",
+  "/admin/:path*",
+  "/analyst",
+  "/analyst/:path*",
+]);
 
 export default convexAuthNextjsMiddleware(
   async (request, { convexAuth }) => {
@@ -16,7 +21,7 @@ export default convexAuthNextjsMiddleware(
       return nextjsMiddlewareRedirect(request, HOME_PATH);
     }
 
-    if (!isPublicPage(request) && !authenticated) {
+    if (isProtectedPage(request) && !authenticated) {
       return nextjsMiddlewareRedirect(request, SIGN_IN_PATH);
     }
   },
