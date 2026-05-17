@@ -1,6 +1,7 @@
 import { Clock, MapPin } from 'lucide-react';
 import { motion } from 'motion/react';
 import type { Report } from '../types';
+import { severityFromThreatScore } from '../utils/threatScore';
 import { ScamTypeTag } from './ScamTypeTag';
 import { SeverityBadge } from './SeverityBadge';
 import { ThreatScoreMini } from './ThreatScoreMini';
@@ -19,13 +20,15 @@ export function ReportCard({
     Math.round((new Date(report.createdAt).getTime() - Date.now()) / 3600000),
     'hour',
   );
+  const threatScore = report.threatScore ?? report.aiScore;
+  const severity = severityFromThreatScore(threatScore);
 
   return (
     <motion.article className="card p-5" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} layout>
       <div className="flex gap-4">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <SeverityBadge severity={report.severity} solid />
+            <SeverityBadge severity={severity} solid />
             <ScamTypeTag type={report.scamType} />
           </div>
           <p
@@ -52,10 +55,7 @@ export function ReportCard({
           )}
         </div>
         <motion.div className="flex shrink-0 flex-col items-center">
-          <ThreatScoreMini
-            score={report.threatScore ?? report.aiScore}
-            severity={report.severity}
-          />
+          <ThreatScoreMini score={threatScore} />
           <span className="mt-1 text-[10px] text-text-dim">Threat Score</span>
         </motion.div>
       </div>

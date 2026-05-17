@@ -5,16 +5,18 @@ import { api } from '../../../convex/_generated/api';
 import { PageHeader } from '../components/PageHeader';
 import { ReportCard } from '../components/ReportCard';
 import { toReport } from '../utils/mapDoc';
+import { severityFromThreatScore } from '../utils/threatScore';
 import type { Severity } from '../types';
 
 export function PublicFeed() {
   const [filter, setFilter] = useState<Severity | 'all'>('all');
-  const reports = useQuery(
-    api.reports.list,
-    filter === 'all' ? {} : { severity: filter },
-  );
+  const reports = useQuery(api.reports.list, {});
 
-  const mapped = reports?.map(toReport) ?? [];
+  const mapped = (reports?.map(toReport) ?? []).filter((r) => {
+    if (filter === 'all') return true;
+    const threatScore = r.threatScore ?? r.aiScore;
+    return severityFromThreatScore(threatScore) === filter;
+  });
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6">

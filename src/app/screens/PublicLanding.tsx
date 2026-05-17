@@ -10,6 +10,7 @@ import {
   Zap,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { NewsletterSignup } from '../components/NewsletterSignup';
 
 const features = [
   { icon: AlertTriangle, title: 'Report Scams', desc: 'Submit suspicious messages for instant AI analysis.', color: 'text-primary' },
@@ -143,24 +144,17 @@ export function PublicLanding() {
       </section>
 
       <section className="mx-auto max-w-3xl px-4 pb-12 sm:px-6">
-        <div className="card flex flex-col gap-4 bg-gray-50 p-6 sm:flex-row sm:items-center">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-accent/15">
-            <Shield className="h-6 w-6 text-accent" />
+        <div className="card bg-gray-50 p-6">
+          <div className="mb-4 flex items-center gap-3">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-accent/15">
+              <Shield className="h-6 w-6 text-accent" />
+            </div>
+            <div>
+              <h2 className="font-bold">Stay Protected</h2>
+              <p className="text-sm text-text-muted">Weekly digest + optional critical threat alerts by email.</p>
+            </div>
           </div>
-          <div className="flex-1">
-            <h2 className="font-bold">Stay Protected</h2>
-            <p className="text-sm text-text-muted">Weekly threat digest — no spam, unsubscribe anytime.</p>
-          </div>
-          <form className="flex w-full gap-2 sm:max-w-md" onSubmit={(e) => e.preventDefault()}>
-            <input
-              type="email"
-              placeholder="you@email.com"
-              className="flex-1 rounded-lg border border-border bg-surface px-4 py-2.5 text-sm"
-            />
-            <button type="submit" className="btn-accent shrink-0 rounded-lg px-5">
-              Subscribe
-            </button>
-          </form>
+          <NewsletterSignup compact />
         </div>
       </section>
 

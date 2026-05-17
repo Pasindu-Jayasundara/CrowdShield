@@ -1,8 +1,9 @@
 import { motion } from 'motion/react';
-import type { Severity } from '../types';
 import { severityRingColor } from '../utils/severity';
+import { severityFromThreatScore } from '../utils/threatScore';
 
-export function AiScoreRing({ score, severity }: { score: number; severity: Severity }) {
+export function AiScoreRing({ score }: { score: number }) {
+  const severity = severityFromThreatScore(score);
   const radius = 52;
   const circumference = 2 * Math.PI * radius;
   const offset = circumference - (score / 100) * circumference;

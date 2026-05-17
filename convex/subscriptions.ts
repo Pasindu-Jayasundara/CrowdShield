@@ -39,6 +39,51 @@ export const stats = query({
   },
 });
 
+/** Public checkout (demo) — creates subscription row and upgrades user if they exist. */
+export const checkout = mutation({
+  args: {
+    email: v.string(),
+    plan: v.union(v.literal("monthly"), v.literal("annual")),
+    amount: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const email = args.email.trim().toLowerCase();
+    if (!email.includes("@")) {
+      throw new Error("Invalid email address");
+    }
+
+    const nextBilling = new Date();
+    if (args.plan === "monthly") {
+      nextBilling.setMonth(nextBilling.getMonth() + 1);
+    } else {
+      nextBilling.setFullYear(nextBilling.getFullYear() + 1);
+    }
+
+    const subscriptionId = await ctx.db.insert("subscriptions", {
+      userEmail: email,
+      plan: args.plan,
+      amount: args.amount,
+      status: "active",
+      nextBilling: nextBilling.toISOString(),
+    });
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", email))
+      .unique();
+
+    if (user) {
+      await ctx.db.patch(user._id, {
+        subscriptionPlan: args.plan,
+        subscriptionStatus: "active",
+        role: user.role === "public" ? "analyst" : user.role,
+      });
+    }
+
+    return { subscriptionId, email };
+  },
+});
+
 export const updateStatus = mutation({
   args: {
     sessionToken: v.optional(v.string()),

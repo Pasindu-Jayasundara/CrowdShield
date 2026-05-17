@@ -5,6 +5,7 @@ import { api } from '../../../../convex/_generated/api';
 import type { Id } from '../../../../convex/_generated/dataModel';
 import { SeverityBadge } from '../../components/SeverityBadge';
 import { getSessionToken } from '../../utils/sessionToken';
+import { severityFromThreatScore } from '../../utils/threatScore';
 
 export function AdminReports() {
   const reports = useQuery(api.reports.get);
@@ -24,17 +25,20 @@ export function AdminReports() {
           {reports === undefined && (
             <p className="text-sm text-text-muted">Loading reports...</p>
           )}
-          {reports?.map((r) => (
+          {reports?.map((r) => {
+            const threatScore = r.threatScore ?? r.aiScore;
+            const severity = severityFromThreatScore(threatScore);
+            return (
             <div key={r._id} className="glass rounded-xl p-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="flex-1">
                   <div className="flex gap-2">
-                    <SeverityBadge severity={r.severity} />
+                    <SeverityBadge severity={severity} />
                     <span className="text-xs text-text-dim capitalize">{r.status}</span>
                   </div>
                   <p className="mt-2 line-clamp-2 text-sm">{r.content}</p>
                   <p className="mt-1 text-xs text-text-dim">
-                    Threat: {r.threatScore ?? r.aiScore} (AI {r.aiScore}, community{' '}
+                    Threat: {threatScore} (AI signal {r.aiScore}, community{' '}
                     {r.communityScore ?? 0}) — {r.aiReasoning.slice(0, 60)}...
                   </p>
                 </div>
@@ -58,7 +62,8 @@ export function AdminReports() {
                 </div>
               </div>
             </div>
-          ))}
+            );
+          })}
         </motion.div>
       </motion.div>
     </div>

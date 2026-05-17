@@ -74,7 +74,11 @@ export function AdminAnnouncements() {
         >
           {sending ? 'Sending...' : `Send to ${recipientCounts[recipients].toLocaleString()} Users`}
         </button>
-        {sent && <p className="text-accent">Announcement sent successfully!</p>}
+        {sent && (
+          <p className="text-accent">
+            Announcement queued — emails send to app users and newsletter subscribers (SendGrid).
+          </p>
+        )}
         {error && <p className="text-critical text-sm">{error}</p>}
       </form>
 
@@ -91,8 +95,10 @@ export function AdminAnnouncements() {
               <p className="font-medium">{a.title}</p>
               <p className="mt-1 line-clamp-2 text-sm text-text-muted">{a.message}</p>
               <p className="mt-1 text-xs text-text-dim">
-                {formatRelativeTime(a.sentAt)} · {a.recipientCount.toLocaleString()} recipients ·{' '}
+                {formatRelativeTime(a.sentAt)} · {a.recipientCount.toLocaleString()} in-app ·{' '}
                 {a.recipients.replace('_', ' ')}
+                {a.emailsSent != null && ` · ${a.emailsSent} emailed`}
+                {a.emailsFailed != null && a.emailsFailed > 0 && ` · ${a.emailsFailed} failed`}
               </p>
             </motion.div>
           );

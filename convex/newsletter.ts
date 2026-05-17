@@ -1,14 +1,20 @@
+import { internal } from "./_generated/api";
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { requireRole } from "./lib/session";
 
 export const subscribe = mutation({
-  args: { email: v.string() },
+  args: {
+    email: v.string(),
+    wantsCriticalAlerts: v.optional(v.boolean()),
+  },
   handler: async (ctx, args) => {
     const email = args.email.trim().toLowerCase();
     if (!email.includes("@")) {
       throw new Error("Invalid email address");
     }
+
+    const wantsCriticalAlerts = args.wantsCriticalAlerts ?? true;
 
     const existing = await ctx.db
       .query("newsletterSubscribers")
@@ -17,9 +23,10 @@ export const subscribe = mutation({
 
     if (existing) {
       if (existing.isActive) {
+        await ctx.db.patch(existing._id, { wantsCriticalAlerts });
         return { subscribed: true, alreadySubscribed: true };
       }
-      await ctx.db.patch(existing._id, { isActive: true });
+      await ctx.db.patch(existing._id, { isActive: true, wantsCriticalAlerts });
       return { subscribed: true, alreadySubscribed: false };
     }
 
@@ -27,8 +34,24 @@ export const subscribe = mutation({
       email,
       subscribedAt: new Date().toISOString(),
       isActive: true,
+      wantsCriticalAlerts,
     });
     return { subscribed: true, alreadySubscribed: false };
+  },
+});
+
+export const unsubscribe = mutation({
+  args: { email: v.string() },
+  handler: async (ctx, args) => {
+    const email = args.email.trim().toLowerCase();
+    const existing = await ctx.db
+      .query("newsletterSubscribers")
+      .withIndex("by_email", (q) => q.eq("email", email))
+      .unique();
+    if (existing) {
+      await ctx.db.patch(existing._id, { isActive: false });
+    }
+    return { unsubscribed: true };
   },
 });
 
@@ -66,15 +89,25 @@ export const send = mutation({
   handler: async (ctx, args) => {
     await requireRole(ctx, args.sessionToken, ["admin"]);
     const subscribers = await ctx.db.query("newsletterSubscribers").take(500);
-    const subscriberCount = subscribers.filter((s) => s.isActive).length;
+    const activeCount = subscribers.filter((s) => s.isActive).length;
 
-    return await ctx.db.insert("newsletters", {
+    const newsletterId = await ctx.db.insert("newsletters", {
       subject: args.subject.trim(),
       content: args.content.trim(),
       sentAt: new Date().toISOString(),
-      subscriberCount,
+      subscriberCount: activeCount,
+      emailsSent: 0,
+      emailsFailed: 0,
       openRate: 0,
       clickRate: 0,
     });
+
+    await ctx.scheduler.runAfter(0, internal.email.sendNewsletterBatch, {
+      newsletterId,
+      subject: args.subject.trim(),
+      content: args.content.trim(),
+    });
+
+    return newsletterId;
   },
 });

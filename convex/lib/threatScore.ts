@@ -42,6 +42,21 @@ function clamp(n: number): number {
   return Math.min(100, Math.max(0, n));
 }
 
+/**
+ * Merges text- and image-model AI components (0–100) into one signal for ThreatScore.
+ * Uses max when both are present so either modality can surface a scam.
+ */
+export function combineModalAiScores(
+  textAiScore?: number | null,
+  imageAiScore?: number | null,
+): number {
+  const scores = [textAiScore, imageAiScore].filter(
+    (s): s is number => s != null && Number.isFinite(s),
+  );
+  if (scores.length === 0) return 0;
+  return Math.max(...scores.map(clamp));
+}
+
 /** Community validation score from vote distribution (0–100). */
 export function computeCommunityScore(
   votesScam: number,

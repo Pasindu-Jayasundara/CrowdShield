@@ -108,6 +108,8 @@ export default defineSchema({
       v.literal("free_users"),
     ),
     recipientCount: v.number(),
+    emailsSent: v.optional(v.number()),
+    emailsFailed: v.optional(v.number()),
     sentAt: v.string(),
   }).index("by_sentAt", ["sentAt"]),
 
@@ -116,6 +118,8 @@ export default defineSchema({
     content: v.string(),
     sentAt: v.string(),
     subscriberCount: v.number(),
+    emailsSent: v.optional(v.number()),
+    emailsFailed: v.optional(v.number()),
     openRate: v.number(),
     clickRate: v.number(),
   }).index("by_sentAt", ["sentAt"]),
@@ -124,5 +128,7 @@ export default defineSchema({
     email: v.string(),
     subscribedAt: v.string(),
     isActive: v.boolean(),
+    /** When false, skip critical threat alert emails. Default: receive alerts. */
+    wantsCriticalAlerts: v.optional(v.boolean()),
   }).index("by_email", ["email"]),
 });

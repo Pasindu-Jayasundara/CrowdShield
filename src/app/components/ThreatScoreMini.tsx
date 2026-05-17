@@ -1,7 +1,8 @@
-import type { Severity } from '../types';
 import { severityRingColor } from '../utils/severity';
+import { severityFromThreatScore } from '../utils/threatScore';
 
-export function ThreatScoreMini({ score, severity }: { score: number; severity: Severity }) {
+export function ThreatScoreMini({ score }: { score: number }) {
+  const severity = severityFromThreatScore(score);
   const color = severityRingColor(severity);
   const r = 20;
   const c = 2 * Math.PI * r;

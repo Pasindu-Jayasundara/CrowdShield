@@ -41,6 +41,8 @@ export interface Campaign {
 
 export interface AIAnalysisResult {
   aiScore: number;
+  textAiScore?: number;
+  imageAiScore?: number;
   threatScore: number;
   confidence: number;
   communityScore: number;
@@ -90,6 +92,8 @@ export interface Announcement {
   message: string;
   recipients: 'all' | 'analysts' | 'free_users';
   recipientCount: number;
+  emailsSent?: number;
+  emailsFailed?: number;
   sentAt: string;
 }
 
@@ -99,6 +103,8 @@ export interface NewsletterIssue {
   content: string;
   sentAt: string;
   subscriberCount: number;
+  emailsSent?: number;
+  emailsFailed?: number;
   openRate: number;
   clickRate: number;
 }
