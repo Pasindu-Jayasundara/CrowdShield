@@ -2,6 +2,11 @@
 
 CrowdShield is a modern cyber threat intelligence dashboard built with React, Convex, and Tailwind CSS. It combines public live feeds, community-sourced scam reports, analyst workflows, and admin operations into a single SaaS-style security product.
 
+## Demo 
+
+[![Watch the video](https://youtu.be/TnviDAZ1878?si=zZ5N_3n7MFvsvuVG)](https://youtu.be/TnviDAZ1878?si=zZ5N_3n7MFvsvuVG)
+
+
 ## Why CrowdShield?
 
 - Public threat feed with AI-assisted scam analysis
